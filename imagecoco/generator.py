@@ -9,7 +9,7 @@ class Generator():
                 self.batch_size = batch_size
 
                 self.model = GPT2LMHeadModel.from_pretrained('gpt2')
-                self.model.lm_head = nn.Linear(self.model.lm_head..in_features, vocab_size)
+                self.model.lm_head = nn.Linear(self.model.lm_head.in_features, vocab_size)
 
                 self.tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
 
