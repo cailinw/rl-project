@@ -1,5 +1,5 @@
 import numpy as np
-import torch
+import torch.nn as nn
 from transformers import GPT2LMHeadModel, GPT2Tokenizer, GPT2Config
 
 # TODO: Implement this
@@ -8,8 +8,10 @@ class Generator():
                 self.seq_len = seq_len
                 self.batch_size = batch_size
 
-                self.model = GPT2LMHeadModel(GPT2Config(vocab_size=4839, n_positions=seq_len, n_ctx=seq_len, \
-                                                n_embd=128, n_layer=n_layer)).cuda()
+                self.model = GPT2LMHeadModel.from_pretrained('gpt2')
+                self.model.lm_head = nn.Linear(self.model.lm_head..in_features, vocab_size)
+
+                self.tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
 
         def generate(self, batch_size, num_batches, hidden_state):
                 res = [] # for result
@@ -21,7 +23,7 @@ class Generator():
                 for _ in num_batches:
                     batch = []
                     for _ in batch_size:
-                        generated = [0]
+                        generated = self.tokenizer.encode('')
                         context = torch.tensor([generated])
                         past = None
 
@@ -35,7 +37,7 @@ class Generator():
                         batch.append(generated)
 
                     res.append(batch)
-
+                # Returns ... .
                 return res
 
 	def rl_train_step(self, x, rewards, policy_probs, decay_weight):
