@@ -19,61 +19,32 @@ class Generator():
                 # in the gpt2 tokenizer.
                 self.token_map = token_map
 
-        # https://huggingface.co/transformers/quickstart.html#using-the-past
         def generate(self, batch_size, num_batches, hidden_state):
-                res = [] # for result
+            res = [] # for result
 
-                # Put model in eval mode to disable dropout
-                self.model.eval()
+            # put into eval mode
+            self.model.eval()
 
-                # Generate. TODO hidden state
-                for _ in num_batches:
-                    batch = []
-                    for _ in batch_size:
-                        generated = ['<|endoftext|>']
-                        context = torch.tensor([generated])
-                        past = None
+            # generate
+            res = self.model.generate(do_sample=True, num_return_sequences=num_batches*batch_size)
 
-                        for _ in range(self.seq_len):
-                            # TODO: get correct syntax
-                            out, past = model(context=context, past_key_values=past)
+            # split into batches
+            res = torch.split(res, batch_size, 0)
 
-                            # TODO: make stochastic
-                            # need to map argmax -> token since cut out some vocab
-                            token = self.token_map[torch.argmax(out[..., -1, :])]
-
-                            generated += [token.tolist()]
-                            context = token.unsqueeze(0)
-
-                        batch.append(generated)
-
-                    res.append(batch)
-
-                # Returns tokens
-                return res
+            # Returns tokens
+            return res
 
         # Gets hidden state for inputted data (for rewards)
-        def get_hidden_state(self, data_loader):
+        def get_hidden_state(self, data):
             self.model.eval()
             pass
 
         # fine tune new FC layer  using normal transformer opt & train data
-        def pretrain_step(self, train_loader):
+        def pretrain_step(self, data):
             self.model.train()
             pass
             
 
-	def rl_train_step(self, x, rewards, policy_probs, decay_weight):
+	def rl_train_step(self, data, rewards, policy_probs, decay_weight):
             # Put model in train mode
 	    self.model.train()
-
-
-if __name__ == '__main__':
-    seq_len = 32
-    vocab_size = 4839
-
-    token_map = pickle.load(open('save/vocab_map.pkl', 'rb'))
-
-    gen = Generator(seq_len, vocab_size, token_map)
-
-    # TODO: train loop...
