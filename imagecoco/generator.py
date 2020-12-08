@@ -25,8 +25,8 @@ class Generator():
             # put into eval mode
             self.model.eval()
 
-            # create first word for all sentences, which is the start token
-            generated = torch.tensor( (num_batches*batch_size)*[50256] )
+            # placeholder for generated words
+            generated = torch.empty(batch_size*num_batches, self.seq_len)
 
             # tensor of probabilities
             probs = torch.empty(batch_size*num_batches, self.seq_len, vocab_size)
@@ -34,13 +34,13 @@ class Generator():
             # tensor of hidden states
             h_states = torch.empty(batch_size*num_batches, self.seq_len, self.model.config.n_embd)
 
-            # for autoreg gen
-            context = torch.tensor([generated])
+            # start token
+            tok = 50256 * torch.ones(batch_size*num_batches)
             past = None
 
             # generate sequence
             for i in range(self.seq_len):
-                prob, past, h_state = model(input_ids=context, past_key_values=past)
+                prob, past, h_state = model(input_ids=tok, past_key_values=past)
 
                 # Attach hidden state (last layer)
                 h_states[:, i, :] = h_state[-1].squeeze(1)
@@ -53,13 +53,11 @@ class Generator():
                 # Sample this prob dist for each sentence.
                 dist = Categorical(prob)
                 # Map this to the GPT2 token set.
-                token = self.token_map[dist.sample()]
+                tok = self.token_map[dist.sample()]
 
                 # Add the new word to all the sentences
-                generated = torch.cat([generated, token], dim=1)
+                generated[:, i+1] = tok
                 
-                # get context ready for round 2
-                context = token.unsqueeze(0)
 
             # split generated sentences into batches of size batch_size
             generated = torch.split(generated, batch_size, dim=0)
