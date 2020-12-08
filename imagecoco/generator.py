@@ -11,7 +11,7 @@ class Generator():
                 self.batch_size = batch_size
 
                 # declare our model, wanting to see hidden states
-                self.model = GPT2LMHeadModel.from_pretrained('gpt2', output_hidden_states=True)
+                self.model = GPT2LMHeadModel.from_pretrained('gpt2', output_hidden_states=True, use_cache=True)
                 # mod head for our coco vocab
                 self.model.lm_head = nn.Linear(self.model.lm_head.in_features, vocab_size)
 
