@@ -121,6 +121,6 @@ for total_batch in range(TOTAL_BATCH):
 			for it in range(dis_data_loader.num_batch):
 				x_text = dis_data_loader.next_batch() # Real (positive) and generated (negative) text
 				r_loss = rewarder.train_step(x_text, generator)
-				r_losses.apend(r_loss)
+				r_losses.append(r_loss)
 	speed = time.time() - start
 	print('Reward training {} round, Speed:{:.3f}, Loss:{:.3f}'.format(total_batch, speed, np.mean(r_losses)))
