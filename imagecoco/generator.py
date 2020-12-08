@@ -1,7 +1,7 @@
 import numpy as np
 import torch.nn as nn
 import torch
-from transformers import GPT2LMHeadModel, GPT2Tokenizer
+from transformers import GPT2LMHeadModel, GPT2Tokenizer, Trainer, TrainingArguments, LineByLineTextDataset
 import pickle
 from torch.distributions import Categorical
 import torch.nn.functional as F
@@ -83,12 +83,30 @@ class Generator():
             pass
 
         # fine tune new FC layer  using normal transformer opt & train data
-        def pretrain_step(self, data):
+        # https://huggingface.co/transformers/custom_datasets.html
+        def pretrain(self, train_path):
 
+            train_data = LineByLineTextDataset(tokenizer=self.tokenizer, file_path=train_path, block_size=self.seq_len)
 
             self.model.train()
-            pass
-            
+
+            training_args = TrainingArguments(
+                output_dir='./results',          # output directory
+                num_train_epochs=3,              # total number of training epochs
+                per_device_train_batch_size=512,  # batch size per device during training
+                warmup_steps=500,                # number of warmup steps for learning rate scheduler
+                weight_decay=0.01,               # strength of weight decay
+                logging_dir='./logs',            # directory for storing logs
+                logging_steps=10,
+            )
+
+            trainer = Trainer(
+                model=self.model,                         # the instantiated 🤗 Transformers model to be trained
+                args=training_args,                  # training arguments, defined above
+                train_dataset=train_dataset,         # training dataset
+            )
+
+            trainer.train() # train
 
         def rl_train_step(self, data, rewards, policy_probs, decay_weight):
             # Put model in train mode
