@@ -64,7 +64,7 @@ class Rewarder:
         """
         Perform one step of stochastic gradient descent for the Reward objective,
         as per equation (6) in https://arxiv.org/pdf/1804.11258.pdf.
-		x_real : (batch_size, seq_len)
+        x_real : (batch_size, seq_len)
         """
 
         # Obtain batch of trajectories from real data. Each token is an embedding of the
