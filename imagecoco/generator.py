@@ -7,9 +7,9 @@ from torch.distributions import Categorical
 import torch.nn.functional as F
 
 class Generator():
-        def __init__(self, seq_len, vocab_size, token_map, str_map=None):
+        def __init__(self, seq_len, token_map, str_map=None):
                 self.seq_len = seq_len
-                self.vocab_size = vocab_size
+                self.vocab_size = len(token_map)
 
                 # declare our model, wanting to see hidden states
                 self.model = GPT2LMHeadModel.from_pretrained('gpt2', output_hidden_states=True, use_cache=True)
@@ -19,7 +19,7 @@ class Generator():
                     param.requires_grad = False
 
                 # mod head for our coco vocab
-                self.model.lm_head = nn.Linear(self.model.lm_head.in_features, vocab_size)
+                self.model.lm_head = nn.Linear(self.model.lm_head.in_features, self.vocab_size)
 
                 # Just making sure the FC layer is not frozen :)
                 for param in self.model.lm_head.parameters():
@@ -97,9 +97,14 @@ class Generator():
             self.model.eval()
 
             # tokenize data
-            tok = self.tokenizer(data)
+            tok = torch.tensor(self.tokenizer(data)['input_ids'])
+            
             # pass thru transformer
             h_state = self.model(input_ids=tok)[2][-1]
+
+            # pick out last token
+            if len(h_state.shape) == 3:
+                h_state = h_state[:,-1,:].squeeze(1)
 
             return h_state
 
