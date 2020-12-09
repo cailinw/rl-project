@@ -70,6 +70,18 @@ def generate_samples(generator, batch_size, generated_num, output_file):
 			buffer = ' '.join([str(x) for x in poem]) + '\n'
 			fout.write(buffer)
 
+#########################################################################################
+#  Other Constants
+#########################################################################################
+vocab_size = 4839
+
+#########################################################################################
+#  Pretrain Transformer
+#########################################################################################
+token_map = pickle.load(open('save/token_map.pkt', 'rb'))
+generator = Generator(SEQ_LEN, vocab_size, token_map)
+generator.pretrain('save/str_real_data.txt')
+
 
 #########################################################################################
 #  Main Training Loop
@@ -77,7 +89,6 @@ def generate_samples(generator, batch_size, generated_num, output_file):
 
 # Get dataloaders
 gen_data_loader = Gen_Data_loader(BATCH_SIZE)
-vocab_size = 4839
 dis_data_loader = Dis_dataloader(re_batch_size)
 
 # Load models

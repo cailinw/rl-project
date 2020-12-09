@@ -1,14 +1,15 @@
 import numpy as np
 import torch.nn as nn
-from transformers import GPT2LMHeadModel, GPT2Tokenizer
+import torch
+from transformers import GPT2LMHeadModel, GPT2Tokenizer, Trainer, TrainingArguments, LineByLineTextDataset
 import pickle
 from torch.distributions import Categorical
 import torch.nn.functional as F
 
 class Generator():
-	def __init__(self, seq_len, vocab_size, token_map):
+        def __init__(self, seq_len, vocab_size, token_map):
                 self.seq_len = seq_len
-                self.batch_size = batch_size
+                self.vocab_size = vocab_size
 
                 # declare our model, wanting to see hidden states
                 self.model = GPT2LMHeadModel.from_pretrained('gpt2', output_hidden_states=True, use_cache=True)
@@ -19,9 +20,9 @@ class Generator():
 
                 # due to changing the architecture, we need to map our argmax to the token
                 # in the gpt2 tokenizer.
-                self.token_map = np.array(token_map)
+                self.token_map = torch.tensor(token_map)
 
-        def generate(self, batch_size, num_batches, inc_hidden_state, inc_probs):
+        def generate(self, batch_size, num_batches, inc_hidden_state, inc_probs, decode):
             # put into eval mode
             self.model.eval()
 
@@ -29,24 +30,25 @@ class Generator():
             generated = torch.empty(batch_size*num_batches, self.seq_len)
 
             # tensor of probabilities
-            probs = torch.empty(batch_size*num_batches, self.seq_len, vocab_size)
+            probs = torch.empty(batch_size*num_batches, self.seq_len, self.vocab_size)
 
             # tensor of hidden states
             h_states = torch.empty(batch_size*num_batches, self.seq_len, self.model.config.n_embd)
 
             # start token
-            tok = 50256 * torch.ones(batch_size*num_batches)
+            tok = 50256 * torch.ones(batch_size*num_batches, dtype=torch.long)
             past = None
 
             # generate sequence
             for i in range(self.seq_len):
-                prob, past, h_state = model(input_ids=tok, past_key_values=past)
+                res = self.model(input_ids=tok, past_key_values=past)
+                prob, past, h_state = res[0], res[1], res[2]
 
                 # Attach hidden state (last layer)
                 h_states[:, i, :] = h_state[-1].squeeze(1)
 
                 # Get dist over tokens (softmax so sum to 1)
-                prob = F.softmax(prob[..., -1, :], dim=1)
+                prob = F.softmax(prob, dim=1)
                 # concat to probs array
                 probs[:, i, :] = prob
 
@@ -56,17 +58,22 @@ class Generator():
                 tok = self.token_map[dist.sample()]
 
                 # Add the new word to all the sentences
-                generated[:, i+1] = tok
-                
+                generated[:, i] = tok
 
-            # split generated sentences into batches of size batch_size
-            generated = torch.split(generated, batch_size, dim=0)
+            if decode:
+                str_gen = []
+                for s in generated:
+                    str_gen.append(self.tokenizer.decode(s))
+
+                generated=str_gen
+            else:
+                generated = np.split(np.array(generated), batch_size, axis=0)
 
             res = [generated]
-            if hidden_state:
-                res += h_states
-            if probs:
-                res += probs
+            if inc_hidden_state:
+                res.append(h_states)
+            if inc_probs:
+                res.append(probs)
 
             return res
 
@@ -76,12 +83,32 @@ class Generator():
             pass
 
         # fine tune new FC layer  using normal transformer opt & train data
-        def pretrain_step(self, data):
-            self.model.train()
-            pass
-            
+        # https://huggingface.co/transformers/custom_datasets.html
+        def pretrain(self, train_path):
 
-	def rl_train_step(self, data, rewards, policy_probs, decay_weight):
+            train_data = LineByLineTextDataset(tokenizer=self.tokenizer, file_path=train_path, block_size=self.seq_len)
+
+            self.model.train()
+
+            training_args = TrainingArguments(
+                output_dir='./results',          # output directory
+                num_train_epochs=3,              # total number of training epochs
+                per_device_train_batch_size=512,  # batch size per device during training
+                warmup_steps=500,                # number of warmup steps for learning rate scheduler
+                weight_decay=0.01,               # strength of weight decay
+                logging_dir='./logs',            # directory for storing logs
+                logging_steps=10,
+            )
+
+            trainer = Trainer(
+                model=self.model,                         # the instantiated 🤗 Transformers model to be trained
+                args=training_args,                  # training arguments, defined above
+                train_dataset=train_dataset,         # training dataset
+            )
+
+            trainer.train() # train
+
+        def rl_train_step(self, data, rewards, policy_probs, decay_weight):
             # Put model in train mode
-	    self.model.train()
+            self.model.train()
             pass
