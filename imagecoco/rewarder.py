@@ -60,12 +60,13 @@ class Rewarder:
         """
         Perform one step of stochastic gradient descent for the Reward objective,
         as per equation (6) in https://arxiv.org/pdf/1804.11258.pdf.
+		x_real : (batch_size, seq_len)
         """
 
         # Obtain batch of trajectories from real data. Each token is an embedding of the
         # state (context) at that index, embedded by GPT2 pre-trained layer.
         # Also store the actions taken at each timestep.
-        # TODO: Compute these.
+        # TODO: Compute these. Using generator function x_real -> hidden_states.
         hidden_states_real = torch.zeroes(
             (self.real_batch_size, self.seq_len, self.embed_dim)
         )
