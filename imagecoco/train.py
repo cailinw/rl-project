@@ -50,14 +50,6 @@ off_num = 2048  # off_policy samples(use PPO2)
 #  Helper Functions
 #########################################################################################
 
-def sample_from_policy(rollout, batch_size, generated_num):
-	trajectories = []
-	policy_probs = []
-	for _ in range(int(generated_num / batch_size)):
-		samples, sample_probs = rollout.generate()
-		trajectories.append(samples)
-		policy_probs.append(sample_probs)
-
 def generate_samples(generator, batch_size, generated_num, output_file):
 	# Generate Samples
 	generated_samples = []
@@ -73,7 +65,7 @@ def generate_samples(generator, batch_size, generated_num, output_file):
 #########################################################################################
 #  Other Constants
 #########################################################################################
-vocab_size = 4839
+vocab_size = 4838
 
 #########################################################################################
 #  Pretrain Transformer
@@ -95,7 +87,7 @@ dis_data_loader = Dis_dataloader(re_batch_size)
 # TODO: Initialize these classes with correct params
 generator = Generator()
 rewarder = Rewarder()
-rollout = Rollout(generator)
+rollout = Rollout(generator, rewarder)
 
 # Create batches from training dataset
 gen_data_loader.create_batches(positive_file)
@@ -109,14 +101,13 @@ for total_batch in range(TOTAL_BATCH):
 	speed = time.time() - start
 	g_losses = []
 	# Generate trajectories (samples) from the current policy (generator)
-	trajectories, policy_probs = sample_from_policy(rollout, BATCH_SIZE, off_num)
+	trajectories, policy_probs = rollout.sample_from_policy(BATCH_SIZE, off_num)
 	# Compute the rewards for each of the trajectories at each time step
-	for it in range(off_num // BATCH_SIZE):
-		rewards = rollout.get_reward(trajectories[it], ROLL_NUM, rewarder)
-		avg_reward.append(rewards)
+	# (batch_size, seq_length)
+	rewards_to_go = rollout.compute_rewards_to_go(trajectories, ROLL_NUM)
 	# Update the generator
-	for it in range(off_num // BATCH_SIZE):
-		_, g_loss = generator.rl_train_step(trajectories[it], avg_reward[it], policy_probs[it], ent_w)
+	for it in range(rewards_to_go.shape[0]):
+		g_loss = generator.rl_train_step(trajectories[it], avg_reward[it], policy_probs[it], ent_w)
 		g_losses.append(g_loss)
 	speed = time.time() - start
 	print('MaxentPolicy Gradient {} round, Speed:{:.3f}, Loss:{:.3f}'.format(total_batch, speed, np.mean(g_losses)))

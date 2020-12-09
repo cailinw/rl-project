@@ -56,6 +56,10 @@ class Rewarder:
         self.model = RewardModel(input_size, hidden_size, vocab_size)
         self.optimizer = torch.optim.Adam(self.parameters(), learning_rate)
 
+    def compute_reward(self, x, a):
+        self.model.eval()
+        return self.model(x, a)
+
     def train_step(self, x_real, generator):
         """
         Perform one step of stochastic gradient descent for the Reward objective,
@@ -104,6 +108,7 @@ class Rewarder:
             reward_gen += w[j] * reward
         reward_gen /= w.sum()
 
+        self.model.train()
         loss = -(reward_real - reward_gen)
         self.optimizer.zero_grad()
         loss.backward()
