@@ -138,7 +138,21 @@ class Generator():
 
             trainer.train() # train
 
-        def rl_train_step(self, data, rewards, policy_probs, decay_weight):
+        def rl_train_step(self, x, rewards_to_go, probs, decay_weight):
+            # TODO: Can take in batch_size instead of 1?
+            '''
+            Parameters
+                x : (1, seq_length)
+                rewards_to_go : (1, seq_length)
+                probs : (1, seq_length, vocab_size)
+            '''
+
             # Put model in train mode
             self.model.train()
-            pass
+            
+
+
+            loss = 0
+            # self.optimizer.zero_grad()
+            # loss.backward()
+            # self.optimizer.step()
