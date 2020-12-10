@@ -40,9 +40,10 @@ class Rewarder:
         seq_length,
         real_batch_size,
         generator_batch_size,
-        input_size,
-        hidden_size,
         vocab_size,
+        hidden_state_size,
+        embed_dim,
+        hidden_size,
         learning_rate,
     ):
 
@@ -50,8 +51,10 @@ class Rewarder:
         self.real_batch_size = real_batch_size
         self.generator_batch_size = generator_batch_size
         self.vocab_size = vocab_size
+        self.hidden_state_size = hidden_state_size # hidden state of generator
+        self.embed_dim = embed_dim # action embedding
+        self.hidden_size = hidden_size # hidden layers of reward model
         self.learning_rate = learning_rate
-        self.embed_dim = hidden_size
 
         self.model = RewardModel(input_size, hidden_size, vocab_size)
         self.optimizer = torch.optim.Adam(self.parameters(), learning_rate)

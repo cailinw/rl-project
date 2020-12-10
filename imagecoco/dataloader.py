@@ -46,33 +46,34 @@ class Dis_dataloader():
 				line = line.split()
 				parse_line = [int(x) for x in line]
 				positive_examples.append(parse_line)
-		with open(negative_file)as fin:
-			for line in fin:
-				line = line.strip()
-				line = line.split()
-				parse_line = [int(x) for x in line]
-				if len(parse_line) == 32:
-					negative_examples.append(parse_line)
+		# with open(negative_file)as fin:
+		# 	for line in fin:
+		# 		line = line.strip()
+		# 		line = line.split()
+		# 		parse_line = [int(x) for x in line]
+		# 		if len(parse_line) == 32:
+		# 			negative_examples.append(parse_line)
 		self.pos_sentences = np.array(positive_examples)
-		self.neg_sentences = np.array(negative_examples)
+		# self.neg_sentences = np.array(negative_examples)
 
 		# Shuffle the data
 		shuffle_pos_indices = np.random.permutation(np.arange(len(self.pos_sentences)))
-		shuffle_neg_indices = np.random.permutation(np.arange(len(self.neg_sentences)))
+		# shuffle_neg_indices = np.random.permutation(np.arange(len(self.neg_sentences)))
 		self.pos_sentences = self.pos_sentences[shuffle_pos_indices]
-		self.neg_sentences = self.neg_sentences[shuffle_neg_indices]
+		# self.neg_sentences = self.neg_sentences[shuffle_neg_indices]
 
 		# Split batches
 		self.num_batch = int(min(len(self.pos_sentences),len(self.neg_sentences)) / self.batch_size)
 		self.pos_sentences = self.pos_sentences[:self.num_batch * self.batch_size]
-		self.neg_sentences = self.neg_sentences[:self.num_batch * self.batch_size]
-		self.neg_sentences = self.neg_sentences[:self.num_batch * self.batch_size]
+		# self.neg_sentences = self.neg_sentences[:self.num_batch * self.batch_size]
+		# self.neg_sentences = self.neg_sentences[:self.num_batch * self.batch_size]
 		self.pos_sentences_batches = np.split(self.pos_sentences, self.num_batch, 0)
-		self.neg_sentences_batches = np.split(self.neg_sentences, self.num_batch, 0)
+		# self.neg_sentences_batches = np.split(self.neg_sentences, self.num_batch, 0)
 		self.pointer = 0
 
 	def next_batch(self):
-		texts = np.concatenate((self.pos_sentences_batches[self.pointer], self.neg_sentences_batches[self.pointer]), axis=0)
+		# texts = np.concatenate((self.pos_sentences_batches[self.pointer], self.neg_sentences_batches[self.pointer]), axis=0)
+		texts = self.pos_sentences_batches[self.pointer]
 		self.pointer = (self.pointer + 1) % self.num_batch
 		return texts
 
