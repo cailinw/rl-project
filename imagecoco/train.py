@@ -110,6 +110,7 @@ for total_batch in range(TOTAL_BATCH):
     # (batch_size, seq_length)
     rewards_to_go = rollout.compute_rewards_to_go(trajectories, ROLL_NUM)
     # Update the generator
+    # TODO: Change inputs to rl_train_step to eat actions.
     for it in range(rewards_to_go.shape[0]):
         g_loss = generator.rl_train_step(
             trajectories[it], rewards_to_go[it], policy_probs[it], ent_w

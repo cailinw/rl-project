@@ -156,18 +156,36 @@ class Generator:
 
         trainer.train()  # train
 
-    def rl_train_step(self, x, rewards_to_go, probs, decay_weight):
+    def rl_train_step(self, actions, rewards_to_go, log_probs, decay_weight):
         """
             Parameters
-                x : (batch_size, seq_length)
+                actions : (batch_size, seq_length)
                 rewards_to_go : (batch_size, seq_length)
-                probs : (batch_size, seq_length, vocab_size)
+                log_probs : (batch_size, seq_length, vocab_size)
             """
 
         # Put model in train mode
         self.model.train()
 
-        # loss = 0
-        # self.optimizer.zero_grad()
-        # loss.backward()
-        # self.optimizer.step()
+        batch_size = actions.shape[0]
+
+        # Find the log_probs pi_theta(a_t, s_t) for the actions in the trajectories.
+        # Shape: (batch_size, seq_length)
+        # TODO: Check if this is indexed correctly.
+        log_probs_trajectory = log_probs[:, :, actions.data.numpy()]
+
+        # Pull out the data of this tensor so that gradient doesn't backpropagate through.
+        log_probs_static = log_probs_trajectory.data.numpy()
+
+        reward = (
+            torch.sum(
+                log_probs_trajectory
+                * [rewards_to_go.data.numpy() - log_probs_static - 1]
+            )
+            / batch_size
+        )
+
+        loss = -reward
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
