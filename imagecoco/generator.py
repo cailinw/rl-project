@@ -134,12 +134,11 @@ class Generator():
             trainer.train() # train
 
         def rl_train_step(self, x, rewards_to_go, probs, decay_weight):
-            # TODO: Can take in batch_size instead of 1?
             '''
             Parameters
-                x : (1, seq_length)
-                rewards_to_go : (1, seq_length)
-                probs : (1, seq_length, vocab_size)
+                x : (batch_size, seq_length)
+                rewards_to_go : (batch_size, seq_length)
+                probs : (batch_size, seq_length, vocab_size)
             '''
 
             # Put model in train mode
