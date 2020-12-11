@@ -6,20 +6,20 @@ import torch.nn.functional as F
 
 
 class RewardModel(nn.Module):
-    def __init__(self, input_size, hidden_size, embed_size, vocab_size):
+    def __init__(self, hidden_state_size, mlp_hidden_size, embed_size, vocab_size):
         super(RewardModel, self).__init__()
-        self.input_size = input_size  # Size of hidden state of generator model.
-        self.hidden_size = hidden_size
+        self.hidden_state_size = hidden_state_size  # Size of hidden state of generator model.
+        self.mlp_hidden_size = mlp_hidden_size
         self.vocab_size = vocab_size
 
         self.embedding = nn.Embedding(vocab_size, embed_size)
-        self.fc_i = nn.Linear(input_size + embed_size, hidden_size)
-        self.fc_h = nn.Linear(hidden_size, hidden_size)
-        self.fc_o = nn.Linear(hidden_size, 1)
+        self.fc_i = nn.Linear(hidden_state_size + embed_size, mlp_hidden_size)
+        self.fc_h = nn.Linear(mlp_hidden_size, mlp_hidden_size)
+        self.fc_o = nn.Linear(mlp_hidden_size, 1)
 
     def forward(self, x, a):
         """
-        x : (batch_size, input_size)
+        x : (batch_size, hidden_state_size)
         a : (batch_size,)
         """
 
@@ -43,7 +43,7 @@ class Rewarder:
         vocab_size,
         hidden_state_size,
         embed_dim,
-        hidden_size,
+        mlp_hidden_size,
         learning_rate,
     ):
 
@@ -53,10 +53,10 @@ class Rewarder:
         self.vocab_size = vocab_size
         self.hidden_state_size = hidden_state_size # hidden state of generator
         self.embed_dim = embed_dim # action embedding
-        self.hidden_size = hidden_size # hidden layers of reward model
+        self.mlp_hidden_size = mlp_hidden_size # hidden layers of reward model
         self.learning_rate = learning_rate
 
-        self.model = RewardModel(input_size, hidden_size, vocab_size)
+        self.model = RewardModel(hidden_state_size, mlp_hidden_size, embed_size, vocab_size)
         self.optimizer = torch.optim.Adam(self.parameters(), learning_rate)
 
     def compute_reward(self, x, a):

@@ -18,6 +18,7 @@ from rollout import Rollout
 SEQ_LENGTH = 32  # sequence length
 START_TOKEN = 0
 BATCH_SIZE = 512
+NUM_BATCHES = 4
 ROLL_NUM = 4
 # TODO: Add hyperparameters here
 
@@ -45,7 +46,7 @@ eval_file_prefix = "save/evaler_file" + str(ent_w)
 pretrain_file_prefix = "save/pretrain_file" + str(ent_w)
 generated_num = 20000
 restore = False
-off_num = 2048  # off_policy samples(use PPO2)
+off_num = 2048
 
 
 #########################################################################################
@@ -126,13 +127,12 @@ for total_batch in range(TOTAL_BATCH):
     start = time.time()
     g_losses = []
     # Generate trajectories (samples) from the current policy (generator)
-    trajectories, probs = rollout.sample_from_policy(BATCH_SIZE, off_num // BATCH_SIZE)
+    trajectories, probs = rollout.sample_from_policy(BATCH_SIZE, NUM_BATCHES)
     # Compute the rewards for each of the trajectories at each time step
     # (num_batches, batch_size, seq_length)
     rewards_to_go = rollout.compute_rewards_to_go(trajectories, ROLL_NUM)
     # Update the generator
-    # TODO: Change inputs to rl_train_step to eat actions. - Done
-    for it in range(off_num // BATCH_SIZE):
+    for it in range(NUM_BATCHES):
         g_loss = generator.rl_train_step(
             trajectories[it], rewards_to_go[it], probs[it], ent_w
         )
