@@ -63,17 +63,13 @@ def generate_samples(generator, batch_size, generated_num, output_file):
 			fout.write(buffer)
 
 #########################################################################################
-#  Other Constants
-#########################################################################################
-vocab_size = 4838
-
-#########################################################################################
 #  Pretrain Transformer
 #########################################################################################
-token_map = pickle.load(open('save/token_map.pkt', 'rb'))
+token_map = pickle.load(open('save/token_map.pkl', 'rb'))
 generator = Generator(SEQ_LEN, vocab_size, token_map)
-generator.pretrain('save/str_real_data.txt')
 
+train_data = pickle.load(open('save/train_data.pkl', 'rb'))
+generator.pretrain(train_data)
 
 #########################################################################################
 #  Main Training Loop
@@ -85,7 +81,6 @@ dis_data_loader = Dis_dataloader(re_batch_size)
 
 # Load models
 # TODO: Initialize these classes with correct params
-generator = Generator()
 rewarder = Rewarder()
 rollout = Rollout(generator, rewarder)
 

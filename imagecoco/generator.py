@@ -1,18 +1,19 @@
 import numpy as np
 import torch.nn as nn
 import torch
-from transformers import GPT2LMHeadModel, GPT2Tokenizer, Trainer, TrainingArguments, LineByLineTextDataset
+from transformers import GPT2LMHeadModel, GPT2Tokenizer, AdamW
 import pickle
 from torch.distributions import Categorical
 import torch.nn.functional as F
 
 class Generator():
+        # TODO: CUDA
         def __init__(self, seq_len, token_map, str_map=None):
                 self.seq_len = seq_len
                 self.vocab_size = len(token_map)
 
                 # declare our model, wanting to see hidden states
-                self.model = GPT2LMHeadModel.from_pretrained('gpt2', output_hidden_states=True, use_cache=True)
+                self.model = GPT2LMHeadModel.from_pretrained('gpt2', output_hidden_states=True, use_cache=True).cuda()
 
                 # freeze transformer
                 for param in self.model.transformer.parameters():
@@ -25,8 +26,12 @@ class Generator():
                 for param in self.model.lm_head.parameters():
                     param.requires_grad = True
 
-                # Use the same tok
-                self.tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
+                # we will use AdamW as the optimizer
+                self.loss = nn.CrossEntropyLoss()
+                self.optim = AdamW(self.model.parameters(), lr=5e-5)
+
+                # Use the same tok TODO seems useless
+                self.tokenizer = GPT2Tokenizer.from_pretrained('gpt2', padding=True)
 
                 # due to changing the architecture, we need to map our argmax to the token
                 # in the gpt2 tokenizer.
@@ -96,9 +101,6 @@ class Generator():
         def get_hidden_state(self, data):
             self.model.eval()
 
-            # tokenize data
-            tok = torch.tensor(self.tokenizer(data)['input_ids'])
-            
             # pass thru transformer
             h_state = self.model(input_ids=tok)[2][-1]
 
@@ -110,33 +112,35 @@ class Generator():
 
         # fine tune new FC layer  using normal transformer opt & train data
         # https://huggingface.co/transformers/custom_datasets.html
-        def pretrain(self, train_path):
+        def pretrain_step(self, batch):
+            """
+            pretrain_step: one step of pretraining
 
-            # Get train data
-            train_data = LineByLineTextDataset(tokenizer=self.tokenizer, file_path=train_path, block_size=self.seq_len)
-
-            # put model in train mode
+            param: batch 
+            """
             self.model.train()
 
-            # train hyperparams
-            training_args = TrainingArguments(
-                output_dir='./results',          # output directory
-                num_train_epochs=3,              # total number of training epochs
-                per_device_train_batch_size=512,  # batch size per device during training
-                warmup_steps=500,                # number of warmup steps for learning rate scheduler
-                weight_decay=0.01,               # strength of weight decay
-                logging_dir='./logs',            # directory for storing logs
-                logging_steps=10,
-            )
+            # get data from batch
+            truth, m_in, mask = batch
+            mask = mask.flatten()
+            truth = truth.flatten()
 
-            # define trainer
-            trainer = Trainer(
-                model=self.model,                         # the instantiated 🤗 Transformers model to be trained
-                args=training_args,                  # training arguments, defined above
-                train_dataset=train_dataset,         # training dataset
-            )
+            # perform one train step
+            self.optim.zero_grad() # clear grad
 
-            trainer.train() # train
+            # need to calc loss manually because of switching vocab (split into multiple tokens)
+
+            # get out prob
+            prob = F.softmax(model(input_ids=m_in)[0], dim=-1).view(-1, self.vocab_size)
+            prob = prob[mask, :]
+
+            # compute loss & backprop
+            loss = self.loss(prob, truth)
+            loss.backward()
+            self.optim.step()
+
+            # ret loss
+            return loss
 
         def rl_train_step(self, x, rewards_to_go, probs, decay_weight):
             # TODO: Can take in batch_size instead of 1?
