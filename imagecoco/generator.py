@@ -20,7 +20,7 @@ class Generator():
                     param.requires_grad = False
 
                 # mod head for our coco vocab
-                self.model.lm_head = nn.Linear(self.model.lm_head.in_features, self.vocab_size)
+                self.model.lm_head = nn.Linear(self.model.lm_head.in_features, self.vocab_size).cuda()
 
                 # Just making sure the FC layer is not frozen :)
                 for param in self.model.lm_head.parameters():
@@ -35,7 +35,7 @@ class Generator():
 
                 # due to changing the architecture, we need to map our argmax to the token
                 # in the gpt2 tokenizer.
-                self.token_map = torch.tensor(token_map)
+                self.token_map = torch.tensor(token_map).cuda()
 
                 # map to map non-gpt vocab back into strings
                 self.str_map = np.array(str_map)
@@ -45,16 +45,16 @@ class Generator():
             self.model.eval()
 
             # placeholder for generated words
-            generated = torch.empty(batch_size*num_batches, self.seq_len, dtype=torch.long)
+            generated = torch.empty(batch_size*num_batches, self.seq_len, dtype=torch.long).cuda()
 
             # tensor of probabilities
-            probs = torch.empty(batch_size*num_batches, self.seq_len, self.vocab_size)
+            probs = torch.empty(batch_size*num_batches, self.seq_len, self.vocab_size).cuda()
 
             # tensor of hidden states
-            h_states = torch.empty(batch_size*num_batches, self.seq_len, self.model.config.n_embd)
+            h_states = torch.empty(batch_size*num_batches, self.seq_len, self.model.config.n_embd).cuda()
 
             # start token
-            tok = 50256 * torch.ones(batch_size*num_batches, dtype=torch.long)
+            tok = 50256 * torch.ones(batch_size*num_batches, dtype=torch.long).cuda()
             past = None
 
             # generate sequence
@@ -81,7 +81,7 @@ class Generator():
                 generated[:, i] = dist.sample()
 
                 # map to gpt2 vocab
-                tok = self.token_map[generated[:, i]]
+                tok = torch.tensor(self.tokenizer(self.str_map[generated[:, i]], padding=True)).cuda()
 
             # decode=put back to string
             if decode:
