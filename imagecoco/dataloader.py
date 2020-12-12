@@ -38,4 +38,3 @@ class Dataloader():
 
 	def reset_pointer(self):
 		self.pointer = 0
-

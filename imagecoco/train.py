@@ -1,12 +1,10 @@
-# import os
-# import random
 import time
 import numpy as np
 import pickle
 
-# import torch
+from torch.utils.data import DataLoader
 
-from dataloader import Gen_Data_loader, Dis_dataloader
+from coco_dataset import COCOImageCaptionsDataset
 from generator import Generator
 from rewarder import Rewarder
 
@@ -48,24 +46,6 @@ off_num = 2048
 
 
 #########################################################################################
-#  Helper Functions
-#########################################################################################
-
-
-# def generate_samples(generator, batch_size, generated_num, output_file):
-#     # Generate Samples
-#     generated_samples = []
-#     for _ in range(int(generated_num / batch_size)):
-#         samples = generator.generate()
-#         generated_samples.extend(samples)
-
-#     with open(output_file, "w") as fout:
-#         for poem in generated_samples:
-#             buffer = " ".join([str(x) for x in poem]) + "\n"
-#             fout.write(buffer)
-
-
-#########################################################################################
 #  Other Constants
 #########################################################################################
 vocab_size = 4838
@@ -74,9 +54,6 @@ vocab_size = 4838
 #  Initialization and Pretraining
 #########################################################################################
 
-# Get dataloaders
-gen_data_loader = Gen_Data_loader(BATCH_SIZE)
-dis_data_loader = Dis_dataloader(re_batch_size)
 
 token_map = pickle.load(open("save/token_map.pkt", "rb"))
 assert len(token_map) == vocab_size
@@ -92,7 +69,7 @@ rewarder = Rewarder(
 	BATCH_SIZE // 2,
 	vocab_size,
 	MID_LAYER_R,
-	hidden_state_size,  # TODOTODO: What is this?
+	hidden_state_size,
 	embed_dim, #
 	MID_LAYER_R,
 	R_rate
@@ -106,8 +83,10 @@ generator.pretrain("save/str_real_data.txt")
 #  Main Training Loop
 #########################################################################################
 
-# Create batches from training dataset
-gen_data_loader.create_batches(positive_file)
+# Training dataset dataloader
+train_dataset = COCOImageCaptionsDataset("save/real_data.txt") # TODO...
+dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE,
+                        shuffle=True, num_workers=0)
 
 for total_batch in range(TOTAL_BATCH):
     # See what sequences are getting generated with the currently policy
