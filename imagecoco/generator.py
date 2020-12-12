@@ -8,9 +8,9 @@ import torch.nn.functional as F
 
 class Generator():
         # TODO: CUDA
-        def __init__(self, seq_len, token_map, str_map=None):
+        def __init__(self, seq_len, str_map):
                 self.seq_len = seq_len
-                self.vocab_size = len(token_map)
+                self.vocab_size = len(str_map)
 
                 # declare our model, wanting to see hidden states
                 self.model = GPT2LMHeadModel.from_pretrained('gpt2', output_hidden_states=True, use_cache=True).cuda()
@@ -32,10 +32,6 @@ class Generator():
 
                 # Use the same tok TODO seems useless
                 self.tokenizer = GPT2Tokenizer.from_pretrained('gpt2', padding=True)
-
-                # due to changing the architecture, we need to map our argmax to the token
-                # in the gpt2 tokenizer.
-                self.token_map = torch.tensor(token_map).cuda()
 
                 # map to map non-gpt vocab back into strings
                 self.str_map = np.array(str_map)
