@@ -24,6 +24,8 @@ class RewardModel(nn.Module):
         """
 
         a_embed = self.embedding(a)
+        print("a ", a_embed.shape)
+        print("x ", x.shape)
         z = torch.cat((x, a_embed), dim=1)
 
         # TODO: Potentially change number of layers.
