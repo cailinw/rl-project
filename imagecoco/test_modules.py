@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 
+from dataloader import Gen_dataloader, Dis_dataloader
 from rewarder import Rewarder, RewardModel
 
 
@@ -31,15 +32,25 @@ class Test:
 		print(result)
 		print(result.shape)
 
-	def test_rewarder(self):
+	def test_rewarder_rewards_to_go(self):
 		model = Rewarder(self.seq_length, self.batch_size // 2, self.batch_size // 2, self.vocab_size, self.hidden_state_size, self.embed_dim, self.mlp_hidden_size, self.learning_rate)
 		trajectories = torch.randn((self.batch_size, self.seq_length))
 		rewarder.rewards_to_go(trajectories, 4)
 
+	def test_rewarder_train_step(self):
+		model = Rewarder(self.seq_length, self.batch_size // 2, self.batch_size // 2, self.vocab_size, self.hidden_state_size, self.embed_dim, self.mlp_hidden_size, self.learning_rate)
+		trajectories = torch.randn((self.batch_size, self.seq_length))
+		rewarder.train_step()
+
+	def test_dataloader(self):
+		pass
+
 
 	def runtests(self):
 		self.test_reward_model()
-		self.test_rewarder()
+		# self.test_rewarder_rewards_to_go()
+		self.test_rewarder_train_step()
+		self.test_dataloader()
 
 
 

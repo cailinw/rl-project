@@ -61,7 +61,7 @@ class Rewarder:
         self.model = RewardModel(hidden_state_size, mlp_hidden_size, embed_dim, vocab_size)
         self.optimizer = torch.optim.Adam(self.parameters(), learning_rate)
 
-    def compute_rewards_to_go(self, trajectories, rewarder, roll_num, reward_gamma = 1.0):
+    def compute_rewards_to_go(self, trajectories, roll_num, reward_gamma = 1.0):
         """
         Compute reward for each partitial trajectory t:seq_length
         for all t 1:seq_length
@@ -108,6 +108,7 @@ class Rewarder:
         x_real : (batch_size, seq_len)
         """
 
+        # Compute reward for real sequences
         # Obtain batch of trajectories from real data. Each token is an embedding of the
         # state (context) at that index, embedded by GPT2 pre-trained layer.
         # Also store the actions taken at each timestep.
@@ -123,16 +124,21 @@ class Rewarder:
         # Compute reward for each state, action pair in the trajectories.
         reward_real = self.model(x_real, a_real) / self.real_batch_size
 
-        # TODO: Compute these, potentially by:
-        # hidden_states_gen, log_probs, x_gen = generator.generate(
-        #     num_gen, 1, inc_hidden_state=True, inc_probs=True
+
+        # Compute reward for 
+        # hidden_states_gen = torch.zeroes(
+        #     (self.generator_batch_size, self.seq_len, self.embed_dim)
         # )
-        hidden_states_gen = torch.zeroes(
-            (self.generator_batch_size, self.seq_len, self.embed_dim)
-        )
-        actions_gen = torch.zeroes((self.generator_batch_size, self.seq_len))
-        log_probs = torch.zeroes(
-            (self.generator_batch_size, self.seq_len, self.vocab_size)
+        # actions_gen = torch.zeroes((self.generator_batch_size, self.seq_len))
+        # log_probs = torch.zeroes(
+        #     (self.generator_batch_size, self.seq_len, self.vocab_size)
+        # )
+        actions_real, hidden_states_real, log_probs = generator.generate(
+            generator_batch_size,
+            1,
+            inc_hidden_state=True,
+            inc_probs=True,
+            decode=False  # TODO: not sure about this
         )
 
         reward_gen = 0
@@ -144,12 +150,11 @@ class Rewarder:
             # gradient does not pass through them.
             # Index the log_probs (probability for all actions given tokens in the sequence),
             # using action_gen, which pulls out the action that was actually taken.
-            log_q = log_probs[j].data.numpy()[:, actions_gen[j].data.numpy()].sum()
-            w[j] = math.exp(reward.data.numpy() - log_q)
+            log_q = log_probs[j].data.numpy()[:, actions_gen[j].detach.numpy()].sum()
+            w[j] = math.exp(reward.detach.numpy() - log_q)
             reward_gen += w[j] * reward
         reward_gen /= w.sum()
 
-        self.model.train()
         loss = -(reward_real - reward_gen)
         self.optimizer.zero_grad()
         loss.backward()
