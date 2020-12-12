@@ -77,7 +77,7 @@ class Generator():
                 generated[:, i] = dist.sample()
 
                 # map to gpt2 vocab
-                print(generated[:,i].shape)
+                print(self.str_map[generated[:, i].cpu()])
                 tok = torch.tensor(self.tokenizer(self.str_map[generated[:, i].cpu()], padding=True)).cuda()
 
             # decode=put back to string
