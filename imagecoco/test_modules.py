@@ -47,8 +47,10 @@ class Test:
 		dataloader = Dataloader(self.batch_size)
 		dataloader.load_train_data("save/real_data.txt")
 		print("sentences: ", dataloader.sentences.shape)
-		print("sentences batches: ", dataloader.sentences_batches.shape)
+		print("sentences batches: ", len(dataloader.sentences_batches))
 		print("num batches: ", dataloader.num_batches)
+		one_sentence_batch = dataloader.next_batch()
+		print("one sentence batch: ", one_sentence_batch.shape, one_sentence_batch)
 		
 
 
