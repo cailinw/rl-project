@@ -58,7 +58,7 @@ class Rewarder:
         self.mlp_hidden_size = mlp_hidden_size # hidden layers of reward model
         self.learning_rate = learning_rate
 
-        self.model = RewardModel(hidden_state_size, mlp_hidden_size, embed_size, vocab_size)
+        self.model = RewardModel(hidden_state_size, mlp_hidden_size, embed_dim, vocab_size)
         self.optimizer = torch.optim.Adam(self.parameters(), learning_rate)
 
     def compute_rewards_to_go(self, trajectories, rewarder, roll_num, reward_gamma = 1.0):
@@ -87,9 +87,10 @@ class Rewarder:
                 rollouts = []  # (batch_size, seq_length)
 
                 # Compute reward at each state for each rollout
-                rewards = rewarder.compute_rewards(
-                    rollouts
-                )  # (batch_size, seq_length)
+                rewards = self.model(rollouts)
+				#rewards = rewarder.compute_rewards(
+                #    rollouts
+                #)  # (batch_size, seq_length)
 
                 # Compute reward-to-go (batch_size,)
                 reward_to_go += rewards[:, n] + (
