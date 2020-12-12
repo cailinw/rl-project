@@ -59,9 +59,44 @@ class Rewarder:
         self.model = RewardModel(hidden_state_size, mlp_hidden_size, embed_size, vocab_size)
         self.optimizer = torch.optim.Adam(self.parameters(), learning_rate)
 
-    def compute_reward(self, x, a):
-        self.model.eval()
-        return self.model(x, a)
+    def compute_rewards_to_go(self, trajectories, rewarder, roll_num, reward_gamma = 1.0):
+        """
+        Compute reward for each partitial trajectory t:seq_length
+        for all t 1:seq_length
+
+        Returns
+        rewards_to_go : (num_batches, batch_size, seq_length)
+        """
+
+        init_shape = trajectories.shape
+        trajectories = trajectories.reshape((-1, self.seq_length))
+
+        rewards_to_go = np.zeros(trajectories.shape[0], self.seq_length)
+
+        for t in range(self.seq_length):
+            # Compute reward to go for each trajectory at s_t
+            #   using MCMC sampling
+            reward_to_go = 0
+            for n in range(roll_num):
+                # TODO: rollout trajectories from s_t to s_{seq_length}
+                #   to get rollouts (batch_size, seq_length)
+                #   How to do this? Just pass through generator, priming with s_1:t,
+                #   or take the log_probs at s_t and sample from multinomial distribution?
+                rollouts = []  # (batch_size, seq_length)
+
+                # Compute reward at each state for each rollout
+                rewards = rewarder.compute_rewards(
+                    rollouts
+                )  # (batch_size, seq_length)
+
+                # Compute reward-to-go (batch_size,)
+                reward_to_go += rewards[:, n] + (
+                    reward_gamma * np.sum(rewards[:, t : self.seq_length], axis=1)
+                )
+
+            rewards_to_go[:, t] = reward_to_go / roll_num
+
+        return rewards_to_go.reshape(init_shape)
 
     def train_step(self, x_real, generator):
         """

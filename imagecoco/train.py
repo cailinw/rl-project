@@ -9,8 +9,6 @@ import pickle
 from dataloader import Gen_Data_loader, Dis_dataloader
 from generator import Generator
 from rewarder import Rewarder
-from rollout import Rollout
-
 
 #########################################################################################
 #  Generator  Hyper-parameters
@@ -99,12 +97,6 @@ rewarder = Rewarder(
 	MID_LAYER_R,
 	R_rate
 )
-rollout = Rollout(
-	generator,
-	rewarder,
-	SEQ_LENGTH,
-	# reward_gamma <-- TODO
-)
 
 # Pretrain generator on coco vocab
 generator.pretrain("save/str_real_data.txt")
@@ -127,10 +119,18 @@ for total_batch in range(TOTAL_BATCH):
     start = time.time()
     g_losses = []
     # Generate trajectories (samples) from the current policy (generator)
-    trajectories, probs = rollout.sample_from_policy(BATCH_SIZE, NUM_BATCHES)
+    trajectories, probs = generator.generate(
+        batch_size,
+        generated_num // batch_size,
+        inc_hidden_state=False,
+        inc_probs=True,
+        decode=False,
+    )
+    trajectories = trajectories.reshape(generated_num // batch_size, batch_size, SEQ_LENGTH),
+    probs = probs.reshape(generated_num // batch_size, batch_size, SEQ_LENGTH, -1)
     # Compute the rewards for each of the trajectories at each time step
     # (num_batches, batch_size, seq_length)
-    rewards_to_go = rollout.compute_rewards_to_go(trajectories, ROLL_NUM)
+    rewards_to_go = rewarder.compute_rewards_to_go(trajectories, rewarder, ROLL_NUM) #, reward_gamma)
     # Update the generator
     for it in range(NUM_BATCHES):
         g_loss = generator.rl_train_step(
