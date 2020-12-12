@@ -32,6 +32,7 @@ class Generator():
 
                 # Use the same tok TODO seems useless
                 self.tokenizer = GPT2Tokenizer.from_pretrained('gpt2', padding=True)
+                self.tokenizer.pad_token = self.tokenizer.eos_token
 
                 # map to map non-gpt vocab back into strings
                 self.str_map = np.array(str_map)
