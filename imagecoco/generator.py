@@ -83,7 +83,7 @@ class Generator():
                 gpt_map = self.tokenizer(list(self.str_map[generated[:, i].cpu()]), padding=True)
                 tok =  torch.tensor(gpt_map['input_ids']).cuda()
                 attn_mask = torch.tensor(gpt_map['attention_mask']).cuda()
-                tok_mask = torch.cat((torch.arange(batch_size*num_batches).unsqueeze(1), attn_mask.argmax(1).unsqueeze(1)), dim=1)
+                tok_mask = torch.cat((torch.arange(batch_size*num_batches).unsqueeze(1).cuda(), attn_mask.argmax(1).unsqueeze(1)), dim=1)
                 print('tok_mask: ', tok_mask)
 
             # decode=put back to string
