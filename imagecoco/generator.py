@@ -52,6 +52,7 @@ class Generator():
 
             # start token
             tok = 50256 * torch.ones(batch_size*num_batches, dtype=torch.long).cuda()
+            attn_mask = torch.ones(batch_size*num_batches, dtype=torch.long).cuda()
             past = None
 
             # generate sequence
