@@ -57,13 +57,13 @@ class Generator():
             # generate sequence
             for i in range(self.seq_len):
                 # forward pass + extract data
-                res = self.model(input_ids=tok, past_key_values=past)
+                res = self.model(input_ids=tok, attention_mask=attn_mask, past_key_values=past)
                 prob, past, h_state = res[0], res[1], res[2][-1]
                 
                 # pick out most recent token (if inputted > 1 token)
                 if len(prob.shape) == 3:
-                    prob = prob[:,-1,:]
-                    h_state = h_state[:,-1,:]
+                    prob = prob[tok_mask,:]
+                    h_state = h_state[tok_mask,:]
 
                 # Attach hidden state (last layer)
                 h_states[:, i, :] = h_state.squeeze(1)
@@ -78,8 +78,11 @@ class Generator():
                 generated[:, i] = dist.sample()
 
                 # map to gpt2 vocab
-                tok = torch.tensor(self.tokenizer(list(self.str_map[generated[:, i].cpu()]), padding=True)['input_ids']).cuda()
-                print('tok: ', tok)
+                gpt_map = torch.tensor(self.tokenizer(list(self.str_map[generated[:, i].cpu()]), padding=True)['input_ids']).cuda()
+                tok =  torch.tensor(gpt_map['input_ids']).cuda()
+                attn_mask = torch.tensor(gpt_map['attention_mask']).cuda()
+                tok_mask = torch.cat((torch.arange(batch_size*num_batches).unsqueeze(1), attn_mask.argmax(1).unsqueeze(1)), dim=1)
+                print('tok_mask: ', tok_mask)
 
             # decode=put back to string
             if decode:
