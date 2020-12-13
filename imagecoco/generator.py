@@ -85,7 +85,7 @@ class Generator():
                 else:
                     str_map = str_map.tolist()
 
-                print(np.array(str_map).shape)
+                print(str_map)
                 gpt_map = self.tokenizer(str_map, padding=True)
                 tok =  torch.tensor(gpt_map['input_ids']).cuda()
                 attn_mask = torch.tensor(gpt_map['attention_mask']).cuda()
