@@ -62,12 +62,10 @@ class Generator():
                 
                 # pick out most recent token (if inputted > 1 token)
                 # TODO: fix this for having other starts than beg token
-                print(h_state.shape, prob.shape)
                 if len(prob.shape) == 3:
                     prob = prob[tok_mask]
                     h_state = h_state[tok_mask]
 
-                print(h_state.shape, prob.shape)
                 # Attach hidden state (last layer)
                 h_states[:, i, :] = h_state.squeeze(1)
 
@@ -82,7 +80,7 @@ class Generator():
 
                 # map to gpt2 vocab
                 str_map = self.str_map[generated[:, :i+1].cpu()]
-                if max([len(x) for x in str_map]) == 1:
+                if i == 0:
                     str_map = np.array(str_map.tolist()).squeeze(1).tolist()
                 else:
                     str_map = str_map.tolist()
