@@ -58,7 +58,7 @@ class Generator():
             # generate sequence
             for i in range(self.seq_len):
                 # forward pass + extract data
-                res = self.model(input_ids=tok, attention_mask=attn_mask, past_key_values=past)
+                res = self.model(input_ids=tok, past_key_values=past)
                 prob, past, h_state = res[0], res[1], res[2][-1]
                 
                 # pick out most recent token (if inputted > 1 token)
