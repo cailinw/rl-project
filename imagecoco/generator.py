@@ -45,29 +45,42 @@ class Generator:
         # map to map non-gpt vocab back into strings
         self.str_map = np.array(str_map)
 
-    def generate(self, batch_size, num_batches, inc_hidden_state, inc_probs, decode):
+    def generate(
+        self,
+        batch_size,
+        num_batches,
+        inc_hidden_state,
+        inc_probs,
+        decode,
+        seq_len=None,
+        start_tokens=None,  # (batch_size, starting_seq_len)
+    ):
         # put into eval mode
         self.model.eval()
 
+        if not seq_len:
+            seq_len = self.seq_len
+
         # placeholder for generated words
-        generated = torch.empty(
-            batch_size * num_batches, self.seq_len, dtype=torch.long
-        )
+        generated = torch.empty(batch_size * num_batches, seq_len, dtype=torch.long)
 
         # tensor of probabilities
-        probs = torch.empty(batch_size * num_batches, self.seq_len, self.vocab_size)
+        probs = torch.empty(batch_size * num_batches, seq_len, self.vocab_size)
 
         # tensor of hidden states
         h_states = torch.empty(
-            batch_size * num_batches, self.seq_len, self.model.config.n_embd
+            batch_size * num_batches, seq_len, self.model.config.n_embd
         )
 
         # start token
-        tok = 50256 * torch.ones(batch_size * num_batches, dtype=torch.long)
+        if not start_tokens:
+            tok = 50256 * torch.ones(batch_size * num_batches, dtype=torch.long)
+        else:
+            tok = start_tokens.long()
         past = None
 
         # generate sequence
-        for i in range(self.seq_len):
+        for i in range(seq_len):
             # forward pass + extract data
             res = self.model(input_ids=tok, past_key_values=past)
             prob, past, h_state = res[0], res[1], res[2][-1]
@@ -95,7 +108,7 @@ class Generator:
         # decode=put back to string
         if decode:
             generated = self.str_map[generated.flatten()].reshape(
-                batch_size * num_batches, self.seq_len
+                batch_size * num_batches, seq_len
             )
         else:
             generated = np.split(np.array(generated), batch_size, axis=0)

@@ -8,7 +8,9 @@ import torch.nn.functional as F
 class RewardModel(nn.Module):
     def __init__(self, hidden_state_size, mlp_hidden_size, embed_size, vocab_size):
         super(RewardModel, self).__init__()
-        self.hidden_state_size = hidden_state_size  # Size of hidden state of generator model.
+        self.hidden_state_size = (
+            hidden_state_size  # Size of hidden state of generator model.
+        )
         self.mlp_hidden_size = mlp_hidden_size
         self.vocab_size = vocab_size
 
@@ -33,7 +35,7 @@ class RewardModel(nn.Module):
         z = F.relu(self.fc_h(z))
         output = self.fc_o(z)
 
-        return torch.sum(output)
+        return output
 
 
 class Rewarder:
@@ -53,18 +55,24 @@ class Rewarder:
         self.real_batch_size = real_batch_size
         self.generator_batch_size = generator_batch_size
         self.vocab_size = vocab_size
-        self.hidden_state_size = hidden_state_size # hidden state of generator
-        self.embed_dim = embed_dim # action embedding
-        self.mlp_hidden_size = mlp_hidden_size # hidden layers of reward model
+        self.hidden_state_size = hidden_state_size  # hidden state of generator
+        self.embed_dim = embed_dim  # action embedding
+        self.mlp_hidden_size = mlp_hidden_size  # hidden layers of reward model
         self.learning_rate = learning_rate
 
-        self.model = RewardModel(hidden_state_size, mlp_hidden_size, embed_dim, vocab_size)
+        self.model = RewardModel(
+            hidden_state_size, mlp_hidden_size, embed_dim, vocab_size
+        )
         self.optimizer = torch.optim.Adam(self.parameters(), learning_rate)
 
-    def compute_rewards_to_go(self, trajectories, roll_num, reward_gamma = 1.0):
+    def compute_rewards_to_go(
+        self, trajectories, generator, roll_num=4, reward_gamma=1.0
+    ):
         """
         Compute reward for each partitial trajectory t:seq_length
         for all t 1:seq_length
+
+        trajectories: (batch_size, seq_len) type: int (?)
 
         Returns
         rewards_to_go : (num_batches, batch_size, seq_length)
@@ -72,34 +80,38 @@ class Rewarder:
 
         init_shape = trajectories.shape
         trajectories = trajectories.reshape((-1, self.seq_length))
+        batch_size = init_shape[0]
 
-        rewards_to_go = np.zeros(trajectories.shape[0], self.seq_length)
+        rewards_to_go = np.zeros(batch_size, self.seq_length)
 
         for t in range(self.seq_length):
             # Compute reward to go for each trajectory at s_t
             #   using MCMC sampling
-            reward_to_go = 0
-            for n in range(roll_num):
-                # TODO: rollout trajectories from s_t to s_{seq_length}
-                #   to get rollouts (batch_size, seq_length)
-                #   How to do this? Just pass through generator, priming with s_1:t,
-                #   or take the log_probs at s_t and sample from multinomial distribution?
-                rollouts = []  # (batch_size, seq_length)
 
-                # Compute reward at each state for each rollout
-                rewards = self.model(rollouts)
-				#rewards = rewarder.compute_rewards(
-                #    rollouts
-                #)  # (batch_size, seq_length)
+            current_traj = trajectories[:, 1:t]  # (batch_size, starting_seq_len))
+            rollouts, rollout_hidden_states = generator.generate(
+                batch_size,
+                roll_num,
+                True,
+                False,
+                False,  # decode
+                seq_len=self.seq_len - t + 1,
+                start_tokens=current_traj,
+            )
 
-                # Compute reward-to-go (batch_size,)
-                reward_to_go += rewards[:, n] + (
-                    reward_gamma * np.sum(rewards[:, t : self.seq_length], axis=1)
-                )
+            # rollouts_hidden_states.shape =  (roll_num, batch_size, ending_seq_len, hidden_dim)
+            # rewards.shape = (roll_num, batch_size)
+            rewards = self.model(rollout_hidden_states).sum(
+                axis=2
+            )  # sum over sequence.
+            rewards_to_go[:, t] += rewards.mean(axis=0)
 
-            rewards_to_go[:, t] = reward_to_go / roll_num
+            # TODO: We might have to use the function below in evaluate mode.
+            # rewards = rewarder.compute_rewards(
+            #    rollouts
+            # )  # (batch_size, seq_length)
 
-        return rewards_to_go.reshape(init_shape)
+        return rewards_to_go
 
     def train_step(self, x_real, generator):
         """
@@ -124,8 +136,7 @@ class Rewarder:
         # Compute reward for each state, action pair in the trajectories.
         reward_real = self.model(x_real, a_real) / self.real_batch_size
 
-
-        # Compute reward for 
+        # Compute reward for
         # hidden_states_gen = torch.zeroes(
         #     (self.generator_batch_size, self.seq_len, self.embed_dim)
         # )
@@ -133,12 +144,12 @@ class Rewarder:
         # log_probs = torch.zeroes(
         #     (self.generator_batch_size, self.seq_len, self.vocab_size)
         # )
-        actions_real, hidden_states_real, log_probs = generator.generate(
-            generator_batch_size,
+        actions_gen, hidden_states_gen, log_probs = generator.generate(
+            self.generator_batch_size,
             1,
             inc_hidden_state=True,
             inc_probs=True,
-            decode=False  # TODO: not sure about this
+            decode=False,  # TODO: not sure about this
         )
 
         reward_gen = 0
