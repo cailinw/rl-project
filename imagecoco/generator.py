@@ -58,7 +58,7 @@ class Generator():
             # generate sequence
             for i in range(self.seq_len):
                 # forward pass + extract data
-                res = self.model(input_ids=tok, past_key_values=past)
+                res = self.model(input_ids=tok, attention_mask=attn_mask)
                 prob, past, h_state = res[0], res[1], res[2][-1]
                 
                 # pick out most recent token (if inputted > 1 token)
@@ -80,7 +80,7 @@ class Generator():
                 generated[:, i] = dist.sample()
 
                 # map to gpt2 vocab
-                gpt_map = self.tokenizer(list(self.str_map[generated[:, i].cpu()]), padding=True)
+                gpt_map = self.tokenizer(list(self.str_map[generated[:, :i+1].cpu()]), padding=True)
                 tok =  torch.tensor(gpt_map['input_ids']).cuda()
                 attn_mask = torch.tensor(gpt_map['attention_mask']).cuda()
                 tok_mask = torch.cat((torch.arange(batch_size*num_batches).unsqueeze(1).cuda(), attn_mask.argmax(1).unsqueeze(1)), dim=1)
