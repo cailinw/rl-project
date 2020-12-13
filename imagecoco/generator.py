@@ -7,7 +7,6 @@ from torch.distributions import Categorical
 import torch.nn.functional as F
 
 class Generator():
-        # TODO: CUDA
         def __init__(self, seq_len, str_map):
                 self.seq_len = seq_len
                 self.vocab_size = len(str_map)
@@ -92,6 +91,7 @@ class Generator():
                 tok =  torch.tensor(gpt_map['input_ids']).cuda()
                 attn_mask = torch.tensor(gpt_map['attention_mask']).cuda()
                 tok_mask = torch.cat((torch.arange(batch_size*num_batches).unsqueeze(1).cuda(), attn_mask.argmax(1).unsqueeze(1)), dim=1)
+                print(tok_mask)
 
             # decode=put back to string
             if decode:
