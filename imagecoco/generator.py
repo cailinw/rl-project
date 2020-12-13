@@ -63,6 +63,7 @@ class Generator():
                 
                 # pick out most recent token (if inputted > 1 token)
                 # TODO: fix this for having other starts than beg token
+                print(h_state.shape, prob.shape)
                 if len(prob.shape) == 3:
                     prob = prob[tok_mask,:]
                     h_state = h_state[tok_mask,:]
