@@ -30,7 +30,6 @@ generated_num = 20000
 restore = False
 off_num = 2048
 
-
 #########################################################################################
 #  Initialization and Pretraining
 #########################################################################################
@@ -39,24 +38,21 @@ off_num = 2048
 str_map = pickle.load(open("save/str_map.pkl", "rb"))
 
 # Load models
-generator = Generator(
-	SEQ_LENGTH,
-	str_map
-)
+generator = Generator(SEQ_LENGTH, str_map)
 rewarder = Rewarder(
-	SEQ_LENGTH,
-	R_BATCH_SIZE // 2,
-	R_BATCH_SIZE // 2,
-	vocab_size,
-	r_hidden_state_size,
-	hidden_state_size,
-	embed_dim, #
-	mlp_hidden_size,
-	R_LEARNING_RATE
+    SEQ_LENGTH,
+    BATCH_SIZE // 2,
+    BATCH_SIZE // 2,
+    vocab_size,
+    r_hidden_state_size,
+    hidden_state_size,
+    embed_dim,  #
+    mlp_hidden_size,
+    R_LEARNING_RATE,
 )
 
 # TODO: implement pretraining step here and get the right data
-train_data = pickle.load(open('save/train_data.pkl', 'rb'))
+train_data = pickle.load(open("save/train_data.pkl", "rb"))
 generator.pretrain(train_data)
 
 #########################################################################################
@@ -118,9 +114,7 @@ for epoch in range(EPOCH):
         for _ in range(3):
             dis_data_loader.reset_pointer()
             for it in range(dis_data_loader.num_batch):
-                x_real = (
-                    dis_data_loader.next_batch()
-                )  # Real (positive) text
+                x_real = dis_data_loader.next_batch()  # Real (positive) text
                 r_loss = rewarder.train_step(x_real, generator)
                 r_losses.append(r_loss)
     speed = time.time() - start
