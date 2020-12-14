@@ -223,27 +223,25 @@ class Generator:
 
         actions = trajectories[0]
 
-        rewards_to_go = rewarder.compute_rewards_to_go(actions, self, roll_num=roll_num)
+        rewards_to_go = rewarder.compute_rewards_to_go(
+            actions.cpu(), self, roll_num=roll_num
+        )
 
         # Find the log_probs pi_theta(a_t, s_t) for the actions in the trajectories.
         # Shape: (batch_size, seq_length)
 
         # Gather values along vocabulary axis.
         indices = actions.unsqueeze(-1)
-        log_probs_trajectory = torch.gather(log_probs, 2, indices)
+        log_probs_trajectory = torch.gather(log_probs, 2, indices).squeeze()
 
         # Pull out the data of this tensor so that gradient doesn't backpropagate through.
         log_probs_static = log_probs_trajectory.cpu().data.numpy()
 
-        reward = (
-            torch.sum(
-                log_probs_trajectory
-                * [rewards_to_go.data.numpy() - log_probs_static - 1]
-            )
-            / generator_batch_size
-        )
+        a = rewards_to_go.cpu().data.numpy() - log_probs_static - 1
+        b = log_probs_trajectory
+        reward = torch.sum(torch.from_numpy(a).cuda() * b) / generator_batch_size
 
         loss = -reward
-        self.optimizer.zero_grad()
+        self.optim.zero_grad()
         loss.backward()
-        self.optimizer.step()
+        self.optim.step()

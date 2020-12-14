@@ -76,7 +76,6 @@ class Rewarder:
         batch_size = init_shape[0]
 
         rewards_to_go = torch.zeros(batch_size, self.seq_length).cuda()
-        print(rewards_to_go.shape)
 
         for t in range(self.seq_length):
             # Compute reward to go for each trajectory at s_t
