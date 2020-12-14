@@ -125,7 +125,7 @@ class Rewarder:
         a_real = real_batch.view(-1, 1)
 
         # Compute reward for each state, action pair in the trajectories.
-        reward_real = self.model(x_real, a_real) / self.real_batch_size
+        reward_real = self.model(x_real, a_real).sum() / self.real_batch_size
 
         actions_gen, hidden_states_gen, log_probs = generator.generate(
             self.generator_batch_size,
@@ -139,7 +139,7 @@ class Rewarder:
         reward_gen = 0
         w = np.zeros(self.generator_batch_size)
         for j in range(self.generator_batch_size):
-            reward = self.model(hidden_states_gen[j], actions_gen[j])
+            reward = torch.sum(self.model(hidden_states_gen[j], actions_gen[j]))
 
             # We cast anything in the computation of w[j] as numpy arrays so that
             # gradient does not pass through them.
