@@ -64,7 +64,7 @@ class Generator():
                 # TODO: fix this for having other starts than beg token
                 if len(prob.shape) == 3:
                     prob = prob[tok_mask]
-                    print('HERE: ', h_state.shape)
+                    print('HERE: ', h_state.shape, tok_mask)
                     h_state = h_state[tok_mask]
 
                 # Attach hidden state (last layer)
