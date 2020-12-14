@@ -32,7 +32,6 @@ class Generator():
                 self.loss = nn.CrossEntropyLoss()
                 self.optim = AdamW(self.model.parameters(), lr=5e-5)
 
-                # Use the same tok TODO seems useless
                 self.tokenizer = GPT2Tokenizer.from_pretrained('gpt2', padding=True)
                 self.tokenizer.pad_token = self.tokenizer.eos_token
 
@@ -58,7 +57,7 @@ class Generator():
                 tok = 50256 * torch.ones(batch_size*num_batches, dtype=torch.long).cuda()
                 attn_mask = torch.ones(batch_size*num_batches, dtype=torch.long).cuda()
             else:
-                str_map = self.str_map[start_toks.cpu()].tolist()
+                str_map = self.str_map[start_toks].tolist()
                 gpt_map = self.tokenizer(str_map, padding=True, is_split_into_words=True)
                 tok =  torch.tensor(gpt_map['input_ids']).cuda()
                 attn_mask = torch.tensor(gpt_map['attention_mask']).cuda()
@@ -113,12 +112,15 @@ class Generator():
         def get_hidden_state(self, data):
             self.model.eval()
 
+            # turn into gpt2 vocab
+            str_map = self.str_map[data].tolist()
+            gpt_map = self.tokenizer(str_map, padding=True, is_split_into_words=True)
+            tok =  torch.tensor(gpt_map['input_ids']).cuda()
+            attn_mask = torch.tensor(gpt_map['attention_mask']).cuda()
+            
             # pass thru transformer
-            h_state = self.model(input_ids=tok)[2][-1]
-
-            # pick out last token
-            if len(h_state.shape) == 3:
-                h_state = h_state[:,-1,:].squeeze(1)
+            h_state = self.model(input_ids=tok, attention_mask=attn_mask)[2][-1].view(-1, self.model.n_embd)
+            h_state = h_state[attn_mask.flatten().bool()]
 
             return h_state
 
