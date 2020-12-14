@@ -43,15 +43,16 @@ def restore(net, save_file):
 	return epoch, loss
 
 
-def restore_latest(net, folder):
+def restore_latest(net, folder, model_type):
     """Restores the most recent weights in a folder
 
     Parameters:
         net(torch.nn.module): The net to restore
         folder(str): The folder path
+        type(str): "g" or "r" to indicate which model type to restore
     """
 
-    checkpoints = sorted(glob.glob(folder + '/*.pt'), key=os.path.getmtime)
+    checkpoints = sorted(glob.glob(folder + '/' + model_type + '*.pt'), key=os.path.getmtime)
     start_it = 0
     if len(checkpoints) > 0:
         return restore(net, checkpoints[-1])
