@@ -6,6 +6,9 @@ import pickle
 from torch.distributions import Categorical
 import torch.nn.functional as F
 
+def batched_index_select(t, dim, inds):
+    return torch.tensor([t[i][inds[i]].cpu().tolist() for i in range(len(inds))]).cuda()
+
 class Generator():
         def __init__(self, seq_len, str_map):
                 self.seq_len = seq_len
@@ -63,9 +66,8 @@ class Generator():
                 # pick out most recent token (if inputted > 1 token)
                 # TODO: fix this for having other starts than beg token
                 if len(prob.shape) == 3:
-                    prob = prob[tok_mask]
-                    print('HERE: ', h_state.shape, tok_mask)
-                    h_state = h_state[tok_mask]
+                    prob = batched_index_select(prob, 1, tok_mask)
+                    h_state = batched_index_select(h_state, 1, tok_mask)
 
                 # Attach hidden state (last layer)
                 h_states[:, i, :] = h_state.squeeze(1)
@@ -84,7 +86,7 @@ class Generator():
                 gpt_map = self.tokenizer(str_map, padding=True, is_split_into_words=True)
                 tok =  torch.tensor(gpt_map['input_ids']).cuda()
                 attn_mask = torch.tensor(gpt_map['attention_mask']).cuda()
-                tok_mask = torch.cat((torch.arange(batch_size*num_batches).unsqueeze(1).cuda(), attn_mask.argmax(1).unsqueeze(1)), dim=1).tolist()
+                tok_mask = attn_mask.argmax(1)
 
             # decode=put back to string
             if decode:
