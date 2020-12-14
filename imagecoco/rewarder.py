@@ -154,6 +154,7 @@ class Rewarder:
         actions_gen, hidden_states_gen, log_probs = generator.generate(
             self.generator_batch_size,
             1,
+            None,
             inc_hidden_state=True,
             inc_probs=True,
             decode=False,  # TODO: not sure about this
