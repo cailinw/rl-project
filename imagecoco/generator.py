@@ -137,7 +137,7 @@ class Generator():
 
             # get data from batch
             truth, m_in, mask = batch
-            mask = mask.flatten()
+            mask = mask.flatten().bool()
             truth = truth.flatten()
 
             # perform one train step
@@ -147,7 +147,7 @@ class Generator():
 
             # get out prob
             prob = F.softmax(model(input_ids=m_in)[0], dim=-1).view(-1, self.vocab_size)
-            prob = prob[mask, :]
+            prob = prob[mask]
 
             # compute loss & backprop
             loss = self.loss(prob, truth)
@@ -168,10 +168,26 @@ class Generator():
 
             # Put model in train mode
             self.model.train()
-            
 
+            batch_size = actions.shape[0]
 
-            loss = 0
-            # self.optimizer.zero_grad()
-            # loss.backward()
-            # self.optimizer.step()
+            # Find the log_probs pi_theta(a_t, s_t) for the actions in the trajectories.
+            # Shape: (batch_size, seq_length)
+            # TODO: Check if this is indexed correctly.
+            log_probs_trajectory = log_probs[:, :, actions.data.numpy()]
+
+            # Pull out the data of this tensor so that gradient doesn't backpropagate through.
+            log_probs_static = log_probs_trajectory.data.numpy()
+
+            reward = (
+            torch.sum(
+                log_probs_trajectory
+                * [rewards_to_go.data.numpy() - log_probs_static - 1]
+            )
+            / batch_size
+            )
+
+            loss = -reward
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
