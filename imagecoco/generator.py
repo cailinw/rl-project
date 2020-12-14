@@ -200,7 +200,7 @@ class Generator:
         # ret loss
         return loss
 
-    def rl_train_step(self, batch_size, rewarder, roll_num=4):
+    def rl_train_step(self, rewarder, generator_batch_size, roll_num=4):
         """
         Parameters
             batch_size: int
@@ -211,8 +211,14 @@ class Generator:
         # Put model in train mode
         self.model.train()
 
+        # Generate batch of data as sample trajectories.
         trajectories, log_probs = self.generate(
-            batch_size, 1, None, inc_hidden_state=False, inc_probs=True, decode=False,
+            generator_batch_size,
+            1,
+            None,
+            inc_hidden_state=False,
+            inc_probs=True,
+            decode=False,
         )
 
         actions = trajectories[0]
@@ -234,7 +240,7 @@ class Generator:
                 log_probs_trajectory
                 * [rewards_to_go.data.numpy() - log_probs_static - 1]
             )
-            / batch_size
+            / generator_batch_size
         )
 
         loss = -reward

@@ -39,8 +39,6 @@ class Rewarder:
     def __init__(
         self,
         seq_length,
-        real_batch_size,
-        generator_batch_size,
         vocab_size,
         hidden_state_size,
         embed_dim,
@@ -49,8 +47,6 @@ class Rewarder:
     ):
 
         self.seq_length = seq_length
-        self.real_batch_size = real_batch_size
-        self.generator_batch_size = generator_batch_size
         self.vocab_size = vocab_size
         self.hidden_state_size = hidden_state_size  # hidden state of generator
         self.embed_dim = embed_dim  # action embedding
@@ -113,7 +109,7 @@ class Rewarder:
 
         return rewards_to_go
 
-    def train_step(self, real_batch, generator):
+    def train_step(self, real_batch, generator, generator_batch_size):
         """
         Perform one step of stochastic gradient descent for the Reward objective,
         as per equation (6) in https://arxiv.org/pdf/1804.11258.pdf.
@@ -124,17 +120,18 @@ class Rewarder:
         # Obtain batch of trajectories from real data. Each token is an embedding of the
         # state (context) at that index, embedded by GPT2 pre-trained layer.
         # Also store the actions taken at each timestep.
+        real_batch_size = real_batch.shape[0]
         hidden_states_real = generator.get_hidden_state(real_batch)
-        # hidden_states_real.shape = self.real_batch_size, self.seq_len, self.embed_dim
+        # hidden_states_real.shape = real_batch_size, self.seq_len, self.embed_dim
 
         x_real = hidden_states_real.view(-1, self.hidden_state_size).cuda()
         a_real = real_batch.view(-1).cuda()
 
         # Compute reward for each state, action pair in the trajectories.
-        reward_real = self.model(x_real, a_real).sum() / self.real_batch_size
+        reward_real = self.model(x_real, a_real).sum() / real_batch_size
 
         actions_gen, hidden_states_gen, log_probs = generator.generate(
-            self.generator_batch_size,
+            generator_batch_size,
             1,
             None,
             inc_hidden_state=True,
@@ -145,8 +142,8 @@ class Rewarder:
         actions_gen = actions_gen[0]
 
         reward_gen = 0
-        w = np.zeros(self.generator_batch_size)
-        for j in range(self.generator_batch_size):
+        w = np.zeros(generator_batch_size)
+        for j in range(generator_batch_size):
             reward = self.model(hidden_states_gen[j], actions_gen[j]).sum()
 
             # We cast anything in the computation of w[j] as numpy arrays so that
