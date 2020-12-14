@@ -54,7 +54,7 @@ class Generator():
 
             # start token
 
-            if not start_toks: # begin with <eos>
+            if start_toks is None: # begin with <eos>
                 tok = 50256 * torch.ones(batch_size*num_batches, dtype=torch.long).cuda()
                 attn_mask = torch.ones(batch_size*num_batches, dtype=torch.long).cuda()
             else:
