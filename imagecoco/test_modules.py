@@ -10,28 +10,27 @@ import pickle
 
 
 class Test:
-    def __init__(
-        self, seq_length, batch_size, hidden_state_size, embed_dim, mlp_hidden_size
-    ):
+    def __init__(self, seq_length, batch_size, embed_dim, mlp_hidden_size):
         self.seq_length = seq_length
         self.batch_size = batch_size
-        self.vocab_size = 4348
-        self.hidden_state_size = hidden_state_size
+        self.vocab_size = 4839
+        self.hidden_state_size = 768
         self.embed_dim = embed_dim
         self.mlp_hidden_size = mlp_hidden_size
         self.learning_rate = 0.01
 
-    def test_reward_model(self):
-        hidden_state_size = 64
+        str_map = pickle.load(open("rl-project/imagecoco/save/str_map.pkl", "rb"))
+        self.generator = Generator(self.seq_length, str_map)
 
+    def test_reward_model(self):
         model = RewardModel(
-            hidden_state_size=hidden_state_size,
+            hidden_state_size=self.hidden_state_size,
             mlp_hidden_size=self.mlp_hidden_size,
             embed_size=self.embed_dim,
             vocab_size=self.vocab_size,
         )
 
-        x = torch.randn((self.batch_size, hidden_state_size))
+        x = torch.randn((self.batch_size, self.hidden_state_size))
         a = torch.randint(self.vocab_size, (self.batch_size,))
 
         result = model(x, a)
@@ -39,7 +38,7 @@ class Test:
         assert result.shape[0] == self.batch_size
         assert result.shape[1] == 1
 
-    def test_rewarder_rewards_to_go(self):
+    def test_rewarder_compute_rewards_to_go(self):
         rewarder = Rewarder(
             self.seq_length,
             self.batch_size // 2,
@@ -53,25 +52,9 @@ class Test:
         trajectories = torch.randint(
             self.vocab_size, (self.batch_size, self.seq_length)
         )
-        str_map = pickle.load(open("save/str_map.pkl", "rb"))
-        print(type(str_map))
-        generator = Generator(self.seq_length, str_map)
-        rewarder.rewards_to_go(trajectories, generator, roll_num=4)
+        result = rewarder.compute_rewards_to_go(trajectories, self.generator)
 
-    # def test_rewarder_train_step(self):
-    # 	generator = Generator()
-    # 	model = Rewarder(self.seq_length, self.batch_size // 2, self.batch_size // 2, self.vocab_size, self.hidden_state_size, self.embed_dim, self.mlp_hidden_size, self.learning_rate)
-    # 	trajectories = torch.randn((self.batch_size, self.seq_length))
-    # 	rewarder.train_step(trajectories, generator)
-
-    # def test_dataloader(self):
-    #     dataloader = Dataloader(self.batch_size)
-    #     dataloader.load_train_data("save/real_data.txt")
-    #     print("sentences: ", dataloader.sentences.shape)
-    #     print("sentences batches: ", len(dataloader.sentences_batches))
-    #     print("num batches: ", dataloader.num_batches)
-    #     one_sentence_batch = dataloader.next_batch()
-    #     print("one sentence batch: ", one_sentence_batch.shape, one_sentence_batch)
+        assert result.shape == self.batch_size
 
     def test_dataloader(self):
         train_data = COCOImageCaptionsDataset("save/train_data.pkl")
@@ -89,6 +72,6 @@ class Test:
 
 
 if __name__ == "__main__":
-    test = Test(32, 64, 512, 100, 128)
+    test = Test(32, 64, 100, 128)
     test.runtests()
 

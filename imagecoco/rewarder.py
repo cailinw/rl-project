@@ -86,9 +86,8 @@ class Rewarder:
             # Compute reward to go for each trajectory at s_t
             #   using MCMC sampling
 
-            current_traj = trajectories[
-                :, 0 : (t + 1)
-            ]  # (batch_size, starting_seq_len))
+            current_traj = trajectories[:, 0 : (t + 1)]
+            # current_traj.shape = (batch_size, starting_seq_len))
             for k in range(roll_num):
                 rollouts, rollout_hidden_states = generator.generate(
                     batch_size,

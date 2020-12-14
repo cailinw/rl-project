@@ -126,8 +126,7 @@ class Generator:
 
         return res
 
-    # Gets hidden state for inputted data (for rewards). returns last one (not for every state)
-    # data:
+    # Gets hidden state for inputted data (for rewards).
     def get_hidden_state(self, batch):
         """
         batch: (batch_size, seq_len) int indicating index in <TODO> vocabulary.
@@ -138,13 +137,16 @@ class Generator:
         res = torch.zeros((batch_size, seq_len, self.hidden_state_size))
 
         for t in range(seq_len):
-            data = batch[:, 1:t]
+            data = batch[:, 0 : (t + 1)]
             # turn into gpt2 vocab
             str_map = [self.str_map[data[i]].tolist() for i in range(len(data))]
             gpt_map = self.tokenizer(str_map, padding=True, is_split_into_words=True)
             tok = torch.tensor(gpt_map["input_ids"]).cuda()
             attn_mask = torch.tensor(gpt_map["attention_mask"]).cuda()
-            tok_mask = attn_mask.argmax(1)
+            if t > 0:
+                tok_mask = attn_mask.argmax(1)
+            else:
+                tok_mask - torch.zeros(batch_size)
 
             # pass thru transformer
             h_state = self.model(input_ids=tok, attention_mask=attn_mask)[2][-1]
