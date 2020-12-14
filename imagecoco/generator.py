@@ -39,7 +39,7 @@ class Generator():
                 # map to map non-gpt vocab back into strings
                 self.str_map = np.array(str_map)
 
-        def generate(self, batch_size, num_batches, inc_hidden_state, inc_probs, decode):
+        def generate(self, batch_size, num_batches, start_toks, inc_hidden_state, inc_probs, decode):
             # put into eval mode
             self.model.eval()
 
@@ -53,9 +53,16 @@ class Generator():
             h_states = torch.empty(batch_size*num_batches, self.seq_len, self.model.config.n_embd).cuda()
 
             # start token
-            tok = 50256 * torch.ones(batch_size*num_batches, dtype=torch.long).cuda()
-            attn_mask = torch.ones(batch_size*num_batches, dtype=torch.long).cuda()
-            past = None
+
+            if not start_toks: # begin with <eos>
+                tok = 50256 * torch.ones(batch_size*num_batches, dtype=torch.long).cuda()
+                attn_mask = torch.ones(batch_size*num_batches, dtype=torch.long).cuda()
+            else:
+                str_map = self.str_map[start_toks.cpu()].tolist()
+                gpt_map = self.tokenizer(str_map, padding=True, is_split_into_words=True)
+                tok =  torch.tensor(gpt_map['input_ids']).cuda()
+                attn_mask = torch.tensor(gpt_map['attention_mask']).cuda()
+                tok_mask = attn_mask.argmax(1)
 
             # generate sequence
             for i in range(self.seq_len):
