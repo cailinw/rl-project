@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from dataloader import Dataloader
+from cooc_dataset import COCOImageCaptionsDataset
 from rewarder import Rewarder, RewardModel
 
 
@@ -54,14 +54,20 @@ class Test:
     # 	trajectories = torch.randn((self.batch_size, self.seq_length))
     # 	rewarder.train_step(trajectories, generator)
 
+    # def test_dataloader(self):
+    #     dataloader = Dataloader(self.batch_size)
+    #     dataloader.load_train_data("save/real_data.txt")
+    #     print("sentences: ", dataloader.sentences.shape)
+    #     print("sentences batches: ", len(dataloader.sentences_batches))
+    #     print("num batches: ", dataloader.num_batches)
+    #     one_sentence_batch = dataloader.next_batch()
+    #     print("one sentence batch: ", one_sentence_batch.shape, one_sentence_batch)
+
     def test_dataloader(self):
-        dataloader = Dataloader(self.batch_size)
-        dataloader.load_train_data("save/real_data.txt")
-        print("sentences: ", dataloader.sentences.shape)
-        print("sentences batches: ", len(dataloader.sentences_batches))
-        print("num batches: ", dataloader.num_batches)
-        one_sentence_batch = dataloader.next_batch()
-        print("one sentence batch: ", one_sentence_batch.shape, one_sentence_batch)
+        train_data = COCOImageCaptionsDataset("save/train_data.pkl")
+        print("len of data: ", len(train_data.data))
+        print("first item: ", train_data.data[0])
+        train_dataloader = DataLoader(train_data, batch_size=512, shuffle=True)
 
     def runtests(self):
         self.test_reward_model()
