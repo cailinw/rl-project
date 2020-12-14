@@ -49,6 +49,12 @@ class Generator:
     def generate(
         self, batch_size, num_batches, start_toks, inc_hidden_state, inc_probs, decode
     ):
+         """
+        Returns:
+            generated : (num_batches, batch_size, seq_len)
+            h_states : (batch_size * num_batches, seq_len, hidden_state_size)
+            probs : (batch_size * num_batches, seq_len, vocab_size)
+        """
         # put into eval mode
         self.model.eval()
 
@@ -112,7 +118,7 @@ class Generator:
 
         # decode=put back to string
         if decode:
-            generated = self.str_map[generated.flatten()].reshape(
+            generated = self.str_map[generated.flatten().cpu()].reshape(
                 batch_size * num_batches, self.seq_len
             )
         else:
