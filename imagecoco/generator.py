@@ -49,7 +49,7 @@ class Generator:
     def generate(
         self, batch_size, num_batches, start_toks, inc_hidden_state, inc_probs, decode
     ):
-         """
+        """
         Returns:
             generated : (num_batches, batch_size, seq_len)
             h_states : (batch_size * num_batches, seq_len, hidden_state_size)
@@ -143,16 +143,20 @@ class Generator:
         res = torch.zeros((batch_size, seq_len, self.hidden_state_size))
 
         for t in range(seq_len):
-            data = batch[:, 0 : (t + 1)]
+            if t == 0:
+                data = batch[:, 0].unsqueeze(1)
+            else:
+                data = batch[:, 0 : (t + 1)]
             # turn into gpt2 vocab
-            str_map = [self.str_map[data[i]].tolist() for i in range(len(data))]
+            # str_map = [self.str_map[data[i]].tolist() for i in range(len(data))]
+            if t == 0:
+                str_map = [[self.str_map[data[i]].tolist()] for i in range(len(data))]
+            else:
+                str_map = [self.str_map[data[i]].tolist() for i in range(len(data))]
             gpt_map = self.tokenizer(str_map, padding=True, is_split_into_words=True)
             tok = torch.tensor(gpt_map["input_ids"]).cuda()
             attn_mask = torch.tensor(gpt_map["attention_mask"]).cuda()
-            if t > 0:
-                tok_mask = attn_mask.argmax(1)
-            else:
-                tok_mask - torch.zeros(batch_size)
+            tok_mask = attn_mask.argmax(1)
 
             # pass thru transformer
             h_state = self.model(input_ids=tok, attention_mask=attn_mask)[2][-1]
