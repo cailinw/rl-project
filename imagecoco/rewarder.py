@@ -25,7 +25,7 @@ class RewardModel(nn.Module):
         """
 
         a_embed = self.embedding(a)
-        z = torch.cat((x, a_embed), dim=1)
+        z = torch.cat((x, a_embed), dim=len(x.shape) - 1)
 
         # TODO: Potentially change number of layers.
         z = F.relu(self.fc_i(z))
@@ -59,7 +59,7 @@ class Rewarder:
 
         self.model = RewardModel(
             hidden_state_size, mlp_hidden_size, embed_dim, vocab_size
-        )
+        ).cuda()
         self.optimizer = torch.optim.Adam(self.model.parameters(), self.learning_rate)
 
     def compute_rewards_to_go(
@@ -79,28 +79,38 @@ class Rewarder:
         trajectories = trajectories.reshape((-1, self.seq_length))
         batch_size = init_shape[0]
 
-        rewards_to_go = torch.zeros((batch_size, self.seq_length))
+        rewards_to_go = torch.zeros(batch_size, self.seq_length).cuda()
+        print(rewards_to_go.shape)
 
         for t in range(self.seq_length):
             # Compute reward to go for each trajectory at s_t
             #   using MCMC sampling
 
-            current_traj = trajectories[:, 1:t]  # (batch_size, starting_seq_len))
-            rollouts, rollout_hidden_states = generator.generate(
-                batch_size,
-                roll_num,
-                current_traj,
-                inc_hidden_state=True,
-                inc_probs=False,
-                decode=False,
-            )
+            current_traj = trajectories[
+                :, 0 : (t + 1)
+            ]  # (batch_size, starting_seq_len))
+            for k in range(roll_num):
+                rollouts, rollout_hidden_states = generator.generate(
+                    batch_size,
+                    1,
+                    current_traj,
+                    inc_hidden_state=True,
+                    inc_probs=False,
+                    decode=False,
+                )
 
-            # rollouts_hidden_states.shape =  (roll_num, batch_size, ending_seq_len, hidden_dim)
-            # rewards.shape = (roll_num, batch_size)
-            rewards = self.model(rollout_hidden_states).sum(
-                axis=2
-            )  # sum over sequence.
-            rewards_to_go[:, t] += rewards.mean(axis=0)
+                # rollouts_hidden_states.shape =  (batch_size, ending_seq_len, hidden_dim)
+                # rollouts[0].shape = (batch_size, ending_seq_len)
+                # rewards.shape = (batch_size*seq_len, 1)
+                rewards = self.model(
+                    rollout_hidden_states.view(-1, self.hidden_state_size),
+                    rollouts[0].view(-1),
+                )
+                result = rewards.view(batch_size, self.seq_length).sum(axis=1)
+
+                rewards_to_go[:, t] += result
+
+            rewards_to_go[:, t] /= roll_num
 
         return rewards_to_go
 
