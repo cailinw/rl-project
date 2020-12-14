@@ -5,6 +5,8 @@ import torch
 from rewarder import Rewarder, RewardModel
 from generator import Generator
 
+import pickle
+
 
 class Test:
     def __init__(
@@ -13,7 +15,7 @@ class Test:
         self.seq_length = seq_length
         self.batch_size = batch_size
         self.vocab_size = 4348
-        self.hidden_state_size = (hidden_state_size,)
+        self.hidden_state_size = hidden_state_size
         self.embed_dim = embed_dim
         self.mlp_hidden_size = mlp_hidden_size
         self.learning_rate = 0.01
@@ -50,7 +52,8 @@ class Test:
         trajectories = torch.randint(
             self.vocab_size, (self.batch_size, self.seq_length)
         )
-        str_map = 0
+        str_map = pickle.load(open("save/str_map.pkl", "rb"))
+        print(type(str_map))
         generator = Generator(self.seq_length, str_map)
         rewarder.rewards_to_go(trajectories, generator, roll_num=4)
 
@@ -60,18 +63,18 @@ class Test:
     # 	trajectories = torch.randn((self.batch_size, self.seq_length))
     # 	rewarder.train_step(trajectories, generator)
 
-    def test_dataloader(self):
-        dataloader = Dataloader(self.batch_size)
-        dataloader.load_train_data("save/real_data.txt")
-        print("sentences: ", dataloader.sentences.shape)
-        print("sentences batches: ", len(dataloader.sentences_batches))
-        print("num batches: ", dataloader.num_batches)
-        one_sentence_batch = dataloader.next_batch()
-        print("one sentence batch: ", one_sentence_batch.shape, one_sentence_batch)
+    # def test_dataloader(self):
+    #     dataloader = Dataloader(self.batch_size)
+    #     dataloader.load_train_data("save/real_data.txt")
+    #     print("sentences: ", dataloader.sentences.shape)
+    #     print("sentences batches: ", len(dataloader.sentences_batches))
+    #     print("num batches: ", dataloader.num_batches)
+    #     one_sentence_batch = dataloader.next_batch()
+    #     print("one sentence batch: ", one_sentence_batch.shape, one_sentence_batch)
 
     def runtests(self):
         self.test_reward_model()
-        # self.test_rewarder_rewards_to_go()
+        self.test_rewarder_rewards_to_go()
         # self.test_rewarder_train_step()
         # self.test_dataloader()
 
