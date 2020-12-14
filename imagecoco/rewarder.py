@@ -127,8 +127,8 @@ class Rewarder:
         hidden_states_real = generator.get_hidden_state(real_batch)
         # hidden_states_real.shape = self.real_batch_size, self.seq_len, self.embed_dim
 
-        x_real = hidden_states_real.view(-1, self.embed_dim)
-        a_real = real_batch.view(-1, 1)
+        x_real = hidden_states_real.view(-1, self.hidden_state_size).cuda()
+        a_real = real_batch.view(-1).cuda()
 
         # Compute reward for each state, action pair in the trajectories.
         reward_real = self.model(x_real, a_real).sum() / self.real_batch_size
@@ -142,17 +142,24 @@ class Rewarder:
             decode=False,  # TODO: not sure about this
         )
 
+        actions_gen = actions_gen[0]
+
         reward_gen = 0
         w = np.zeros(self.generator_batch_size)
         for j in range(self.generator_batch_size):
-            reward = torch.sum(self.model(hidden_states_gen[j], actions_gen[j]))
+            reward = self.model(hidden_states_gen[j], actions_gen[j]).sum()
 
             # We cast anything in the computation of w[j] as numpy arrays so that
             # gradient does not pass through them.
             # Index the log_probs (probability for all actions given tokens in the sequence),
             # using action_gen, which pulls out the action that was actually taken.
-            log_q = log_probs[j].data.numpy()[:, actions_gen[j].data.numpy()].sum()
-            w[j] = math.exp(reward.data.numpy() - log_q)
+            # actions_gen[j].shape = seq_len
+            # log_probs[j].shape = (seq_len, vocab_size)
+            indices = actions_gen[j].unsqueeze(-1)
+
+            # Gather values along vocabulary axis.
+            log_q = torch.gather(log_probs[j], 1, indices).sum().cpu().data.numpy()
+            w[j] = math.exp(reward.cpu().data.numpy() - log_q)
             reward_gen += w[j] * reward
         reward_gen /= w.sum()
 
