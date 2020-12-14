@@ -92,7 +92,7 @@ class Generator():
             if decode:
                 generated = self.str_map[generated.flatten()].reshape(batch_size*num_batches, self.seq_len)
             else:
-                generated = np.split(np.array(generated), batch_size, axis=0)
+                generated = torch.split(generated, batch_size, dim=0)
 
             res = [generated]
             if inc_hidden_state:
