@@ -64,7 +64,8 @@ class Generator():
                 # TODO: fix this for having other starts than beg token
                 if len(prob.shape) == 3:
                     prob = prob[tok_mask]
-                    h_state = h_state.cpu()[tok_mask].cuda()
+                    print('HERE: ', h_state.shape)
+                    h_state = h_state[tok_mask]
 
                 # Attach hidden state (last layer)
                 h_states[:, i, :] = h_state.squeeze(1)
