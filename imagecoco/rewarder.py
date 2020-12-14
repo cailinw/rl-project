@@ -95,16 +95,8 @@ class Rewarder:
                 current_traj,
                 inc_hidden_state=True,
                 inc_probs=False,
-                decode=False
+                decode=False,
             )
-            #     batch_size,
-            #     roll_num,
-            #     True,
-            #     False,
-            #     False,  # decode
-            #     seq_len=self.seq_len - t + 1,
-            #     start_tokens=current_traj,
-            # )
 
             # rollouts_hidden_states.shape =  (roll_num, batch_size, ending_seq_len, hidden_dim)
             # rewards.shape = (roll_num, batch_size)
@@ -113,44 +105,28 @@ class Rewarder:
             )  # sum over sequence.
             rewards_to_go[:, t] += rewards.mean(axis=0)
 
-            # TODO: We might have to use the function below in evaluate mode.
-            # rewards = rewarder.compute_rewards(
-            #    rollouts
-            # )  # (batch_size, seq_length)
-
         return rewards_to_go
 
-    def train_step(self, x_real, generator):
+    def train_step(self, real_batch, generator):
         """
         Perform one step of stochastic gradient descent for the Reward objective,
         as per equation (6) in https://arxiv.org/pdf/1804.11258.pdf.
-        x_real : (batch_size, seq_len)
+        real_batch : (batch_size, seq_len)
         """
 
         # Compute reward for real sequences
         # Obtain batch of trajectories from real data. Each token is an embedding of the
         # state (context) at that index, embedded by GPT2 pre-trained layer.
         # Also store the actions taken at each timestep.
-        # TODO: Compute these. Using generator function x_real -> hidden_states.
-        hidden_states_real = torch.zeroes(
-            (self.real_batch_size, self.seq_len, self.embed_dim)
-        )
-        actions_real = torch.zeroes((self.real_batch_size, self.seq_len))
+        hidden_states_real = generator.get_hidden_state(real_batch)
+        # hidden_states_real.shape = self.real_batch_size, self.seq_len, self.embed_dim
 
         x_real = hidden_states_real.view(-1, self.embed_dim)
-        a_real = actions_real.view(-1, self.vocab_size)
+        a_real = real_batch.view(-1, 1)
 
         # Compute reward for each state, action pair in the trajectories.
         reward_real = self.model(x_real, a_real) / self.real_batch_size
 
-        # Compute reward for
-        # hidden_states_gen = torch.zeroes(
-        #     (self.generator_batch_size, self.seq_len, self.embed_dim)
-        # )
-        # actions_gen = torch.zeroes((self.generator_batch_size, self.seq_len))
-        # log_probs = torch.zeroes(
-        #     (self.generator_batch_size, self.seq_len, self.vocab_size)
-        # )
         actions_gen, hidden_states_gen, log_probs = generator.generate(
             self.generator_batch_size,
             1,
@@ -169,8 +145,8 @@ class Rewarder:
             # gradient does not pass through them.
             # Index the log_probs (probability for all actions given tokens in the sequence),
             # using action_gen, which pulls out the action that was actually taken.
-            log_q = log_probs[j].data.numpy()[:, actions_gen[j].detach.numpy()].sum()
-            w[j] = math.exp(reward.detach.numpy() - log_q)
+            log_q = log_probs[j].data.numpy()[:, actions_gen[j].data.numpy()].sum()
+            w[j] = math.exp(reward.data.numpy() - log_q)
             reward_gen += w[j] * reward
         reward_gen /= w.sum()
 

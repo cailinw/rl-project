@@ -34,6 +34,8 @@ class Generator:
         for param in self.model.lm_head.parameters():
             param.requires_grad = True
 
+        self.hidden_state_size = 768
+
         # we will use AdamW as the optimizer
         self.loss = nn.CrossEntropyLoss()
         self.optim = AdamW(self.model.parameters(), lr=5e-5)
@@ -125,21 +127,32 @@ class Generator:
         return res
 
     # Gets hidden state for inputted data (for rewards). returns last one (not for every state)
-    def get_hidden_state(self, data):
+    # data:
+    def get_hidden_state(self, batch):
+        """
+        batch: (batch_size, seq_len) int indicating index in <TODO> vocabulary.
+        """
         self.model.eval()
 
-        # turn into gpt2 vocab
-        str_map = [self.str_map[data[i]].tolist() for i in range(len(data))]
-        gpt_map = self.tokenizer(str_map, padding=True, is_split_into_words=True)
-        tok = torch.tensor(gpt_map["input_ids"]).cuda()
-        attn_mask = torch.tensor(gpt_map["attention_mask"]).cuda()
-        tok_mask = attn_mask.argmax(1)
+        batch_size, seq_len = batch.shape
+        res = torch.zeros((batch_size, seq_len, self.hidden_state_size))
 
-        # pass thru transformer
-        h_state = self.model(input_ids=tok, attention_mask=attn_mask)[2][-1]
-        h_state = batched_index_select(h_state, 1, tok_mask)
+        for t in range(seq_len):
+            data = batch[:, 1:t]
+            # turn into gpt2 vocab
+            str_map = [self.str_map[data[i]].tolist() for i in range(len(data))]
+            gpt_map = self.tokenizer(str_map, padding=True, is_split_into_words=True)
+            tok = torch.tensor(gpt_map["input_ids"]).cuda()
+            attn_mask = torch.tensor(gpt_map["attention_mask"]).cuda()
+            tok_mask = attn_mask.argmax(1)
 
-        return h_state
+            # pass thru transformer
+            h_state = self.model(input_ids=tok, attention_mask=attn_mask)[2][-1]
+            h_state = batched_index_select(h_state, 1, tok_mask)
+
+            res[:, t, :] = h_state
+
+        return res
 
     # fine tune new FC layer  using normal transformer opt & train data
     # https://huggingface.co/transformers/custom_datasets.html
@@ -190,11 +203,14 @@ class Generator:
 
         # Find the log_probs pi_theta(a_t, s_t) for the actions in the trajectories.
         # Shape: (batch_size, seq_length)
-        # TODO: Check if this is indexed correctly.
-        log_probs_trajectory = log_probs[:, :, actions.detach.numpy()]
+        # Add dimension of size 1 at the end.
+        indices = actions.unsqueeze(-1).data.numpy()
+
+        # Gather values along vocabulary axis.
+        log_probs_trajectory = torch.gather(log_probs, 2, indices)
 
         # Pull out the data of this tensor so that gradient doesn't backpropagate through.
-        log_probs_static = log_probs_trajectory.detach.numpy()
+        log_probs_static = log_probs_trajectory.data.numpy()
 
         reward = (
             torch.sum(

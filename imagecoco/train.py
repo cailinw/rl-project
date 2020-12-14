@@ -20,7 +20,9 @@ ROLL_NUM = 4
 #########################################################################################
 r_hidden_state_size = 512
 ent_w = 1.0
-R_WEIGHT_DECAY = 16  # SGD learn epoch decay  # TODO: incorporate this...number seems too big
+R_WEIGHT_DECAY = (
+    16  # SGD learn epoch decay  # TODO: incorporate this...number seems too big
+)
 R_LEARNING_RATE = 0.01
 # TODO: Add hyperparameters here
 
@@ -46,24 +48,21 @@ off_num = 2048
 str_map = pickle.load(open("save/str_map.pkl", "rb"))
 
 # Load models
-generator = Generator(
-	SEQ_LENGTH,
-	str_map
-)
+generator = Generator(SEQ_LENGTH, str_map)
 rewarder = Rewarder(
-	SEQ_LENGTH,
-	BATCH_SIZE // 2,
-	BATCH_SIZE // 2,
-	vocab_size,
-	r_hidden_state_size,
-	hidden_state_size,
-	embed_dim, #
-	mlp_hidden_size,
-	R_LEARNING_RATE
+    SEQ_LENGTH,
+    BATCH_SIZE // 2,
+    BATCH_SIZE // 2,
+    vocab_size,
+    r_hidden_state_size,
+    hidden_state_size,
+    embed_dim,  #
+    mlp_hidden_size,
+    R_LEARNING_RATE,
 )
 
 # TODO: implement pretraining step here and get the right data
-train_data = pickle.load(open('save/train_data.pkl', 'rb'))
+train_data = pickle.load(open("save/train_data.pkl", "rb"))
 generator.pretrain(train_data)
 
 #########################################################################################
@@ -89,11 +88,15 @@ for epoch in range(EPOCH):
         inc_probs=True,
         decode=False,
     )
-    trajectories = trajectories.reshape(generated_num // batch_size, batch_size, SEQ_LENGTH),
+    trajectories = (
+        trajectories.reshape(generated_num // batch_size, batch_size, SEQ_LENGTH),
+    )
     probs = probs.reshape(generated_num // batch_size, batch_size, SEQ_LENGTH, -1)
     # Compute the rewards for each of the trajectories at each time step
     # (num_batches, batch_size, seq_length)
-    rewards_to_go = rewarder.compute_rewards_to_go(trajectories, rewarder, ROLL_NUM) #, reward_gamma)
+    rewards_to_go = rewarder.compute_rewards_to_go(
+        trajectories, rewarder, ROLL_NUM
+    )  # , reward_gamma)
     # Update the generator
     for it in range(NUM_BATCHES):
         g_loss = generator.rl_train_step(
@@ -116,9 +119,7 @@ for epoch in range(EPOCH):
         for _ in range(3):
             dis_data_loader.reset_pointer()
             for it in range(dis_data_loader.num_batch):
-                x_real = (
-                    dis_data_loader.next_batch()
-                )  # Real (positive) text
+                x_real = dis_data_loader.next_batch()  # Real (positive) text
                 r_loss = rewarder.train_step(x_real, generator)
                 r_losses.append(r_loss)
     speed = time.time() - start
