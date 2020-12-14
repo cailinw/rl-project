@@ -52,8 +52,6 @@ else:
     generator = Generator(SEQ_LENGTH, str_map)
     rewarder = Rewarder(
         SEQ_LENGTH,
-        R_BATCH_SIZE // 2,
-        R_BATCH_SIZE // 2,
         vocab_size,
         g_hidden_state_size,
         action_embed_dim,
@@ -84,27 +82,13 @@ for epoch in range(EPOCHS):
     # TRAIN GENERATOR
     start = time.time()
     g_losses = []
-    #for _ in range(G_ITERS):
-    #    # Generate trajectories (samples) from the current policy (generator)
-    #    num_batches = generated_num // G_BATCH_SIZE
-    #    trajectories, probs = generator.generate(
-    #        G_BATCH_SIZE,
-    #        num_batches,
-    #        None,
-    #        inc_hidden_state=False,
-    #        inc_probs=True,
-    #        decode=False,
-    #    )
-    #    trajectories = trajectories.reshape(num_batches, G_BATCH_SIZE, SEQ_LENGTH),
-    #    probs = probs.reshape(num_batches, G_BATCH_SIZE, SEQ_LENGTH, -1)
-    #    for batch_idx in range(num_batches):
-    #        rewards_to_go = rewarder.compute_rewards_to_go(
-    #            trajectories[batch_idx] ,rewarder, ROLL_NUM #, reward_gamma
-    #        )
-    #        g_loss = generator.rl_train_step(
-    #            trajectories[it], rewards_to_go[it], probs[it], ent_w
-    #        )
-    #        g_losses.append(g_loss)
+    for _ in range(G_ITERS):
+        num_batches = generated_num // G_BATCH_SIZE
+        for batch_idx in range(num_batches):
+            g_loss = generator.rl_train_step(
+                rewarder, G_BATCH_SIZE
+            )
+            g_losses.append(g_loss)
     speed = time.time() - start
     print(
         "MaxentPolicy Gradient {} epoch, Speed:{:.3f}, Loss:{:.3f}".format(
@@ -117,7 +101,7 @@ for epoch in range(EPOCHS):
     r_losses = []
     for _ in range(R_ITERS):
         for batch_idx, trajectories_real in enumerate(train_dataloader):
-            r_loss = rewarder.train_step(trajectories_real, generator)
+            r_loss = rewarder.train_step(trajectories_real, generator, G_BATCH_SIZE)
             r_losses.append(r_loss)
     speed = time.time() - start
     print(
