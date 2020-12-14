@@ -2,8 +2,6 @@ import time
 import numpy as np
 import pickle
 
-from torch.utils.data import DataLoader
-
 from generator import Generator
 from rewarder import Rewarder
 
@@ -11,28 +9,23 @@ from rewarder import Rewarder
 #  Generator  Hyper-parameters
 #########################################################################################
 SEQ_LENGTH = 32  # sequence length
-BATCH_SIZE = 512
-NUM_BATCHES = 4
+G_BATCH_SIZE = 512
+generated_num = 20000
 ROLL_NUM = 4
 
 #########################################################################################
 #  Reward Hyper-parameters
 #########################################################################################
 r_hidden_state_size = 512
-ent_w = 1.0
-R_WEIGHT_DECAY = 16  # SGD learn epoch decay  # TODO: incorporate this...number seems too big
+R_BATCH_SIZE = 512
 R_LEARNING_RATE = 0.01
-# TODO: Add hyperparameters here
 
 
 #########################################################################################
 #  Basic Training Parameters
 #########################################################################################
 EPOCHS = 51
-positive_file = "save/real_data.txt"
-negative_file = "save/generator_sample" + str(ent_w) + ".txt"
-eval_file_prefix = "save/evaler_file" + str(ent_w)
-pretrain_file_prefix = "save/pretrain_file" + str(ent_w)
+
 generated_num = 20000
 restore = False
 off_num = 2048
@@ -52,8 +45,8 @@ generator = Generator(
 )
 rewarder = Rewarder(
 	SEQ_LENGTH,
-	BATCH_SIZE // 2,
-	BATCH_SIZE // 2,
+	R_BATCH_SIZE // 2,
+	R_BATCH_SIZE // 2,
 	vocab_size,
 	r_hidden_state_size,
 	hidden_state_size,
@@ -72,30 +65,32 @@ generator.pretrain(train_data)
 
 
 for epoch in range(EPOCH):
-    # See what sequences are getting generated with the currently policy
-    # TODO: Uncomment this to save samples throughout training
-    # if total_batch % 5 == 0 or total_batch == TOTAL_BATCH - 1:
-    # 	generate_samples(generator, BATCH_SIZE, generated_num, eval_file_prefix + str(total_batch))
+    # See what sequences are getting generated with the currenty policy
+    # TODO: Make this write generated sequences to log
+    # if epoch % 5 == 0 or epoch == EPOCHS - 1:
+    # 	generator.generate(batch_size, 1, None, False, False, True)
+
+
 
     # TRAIN GENERATOR
     start = time.time()
     g_losses = []
     # Generate trajectories (samples) from the current policy (generator)
+    num_batches = generated_num // G_batch_size
     trajectories, probs = generator.generate(
-        batch_size,
-        generated_num // batch_size,
+        G_BATCH_SIZE,
+        num_batches,
         None,
         inc_hidden_state=False,
         inc_probs=True,
         decode=False,
     )
-    trajectories = trajectories.reshape(generated_num // batch_size, batch_size, SEQ_LENGTH),
-    probs = probs.reshape(generated_num // batch_size, batch_size, SEQ_LENGTH, -1)
-    # Compute the rewards for each of the trajectories at each time step
-    # (num_batches, batch_size, seq_length)
-    rewards_to_go = rewarder.compute_rewards_to_go(trajectories, rewarder, ROLL_NUM) #, reward_gamma)
-    # Update the generator
-    for it in range(NUM_BATCHES):
+    trajectories = trajectories.reshape(num_batches, G_BATCH_SIZE, SEQ_LENGTH),
+    probs = probs.reshape(num_batches, G_BATCH_SIZE, SEQ_LENGTH, -1)
+    for batch_idx in range(num_batches):
+        rewards_to_go = rewarder.compute_rewards_to_go(
+            trajectories[batch_idx] ,rewarder, ROLL_NUM #, reward_gamma
+        )
         g_loss = generator.rl_train_step(
             trajectories[it], rewards_to_go[it], probs[it], ent_w
         )
@@ -107,9 +102,16 @@ for epoch in range(EPOCH):
         )
     )
 
+
+
+# for batch_idx, (data, label) in enumerate(train_loader):
+
     # TRAIN REWARDER
     start = time.time()
     r_losses = []
+
+
+    
     for _ in range(8):
         # generate_samples(generator, BATCH_SIZE, generated_num, negative_file)
         dis_data_loader.load_train_data(positive_file, negative_file)
