@@ -79,7 +79,7 @@ class Generator():
                 generated[:, i] = dist.sample()
 
                 # map to gpt2 vocab
-                str_map = self.str_map[generated[:, :i+1].cpu()]
+                str_map = self.str_map[generated[:, :i+1].cpu()].tolist()
                 gpt_map = self.tokenizer(str_map, padding=True, is_split_into_words=True)
                 tok =  torch.tensor(gpt_map['input_ids']).cuda()
                 attn_mask = torch.tensor(gpt_map['attention_mask']).cuda()
