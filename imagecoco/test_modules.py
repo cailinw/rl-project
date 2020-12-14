@@ -1,8 +1,9 @@
-import numpy as np
+# import numpy as np
 import torch
 
-from dataloader import Dataloader
+# from dataloader import Dataloader
 from rewarder import Rewarder, RewardModel
+from generator import Generator
 
 
 class Test:
@@ -28,11 +29,12 @@ class Test:
         )
 
         x = torch.randn((self.batch_size, hidden_state_size))
-        a = torch.randint(1, self.vocab_size, (self.batch_size,))
+        a = torch.randint(self.vocab_size, (self.batch_size,))
 
         result = model(x, a)
-        print(result)
-        print(result.shape)
+
+        assert result.shape[0] == self.batch_size
+        assert result.shape[1] == 1
 
     def test_rewarder_rewards_to_go(self):
         rewarder = Rewarder(
@@ -45,8 +47,12 @@ class Test:
             self.mlp_hidden_size,
             self.learning_rate,
         )
-        trajectories = torch.randn((self.batch_size, self.seq_length))
-        rewarder.rewards_to_go(trajectories, 4)
+        trajectories = torch.randint(
+            self.vocab_size, (self.batch_size, self.seq_length)
+        )
+        str_map = 0
+        generator = Generator(self.seq_length, str_map)
+        rewarder.rewards_to_go(trajectories, generator, roll_num=4)
 
     # def test_rewarder_train_step(self):
     # 	generator = Generator()
@@ -67,7 +73,7 @@ class Test:
         self.test_reward_model()
         # self.test_rewarder_rewards_to_go()
         # self.test_rewarder_train_step()
-        self.test_dataloader()
+        # self.test_dataloader()
 
 
 if __name__ == "__main__":

@@ -26,8 +26,6 @@ class RewardModel(nn.Module):
         """
 
         a_embed = self.embedding(a)
-        print("a ", a_embed.shape)
-        print("x ", x.shape)
         z = torch.cat((x, a_embed), dim=1)
 
         # TODO: Potentially change number of layers.
@@ -72,7 +70,7 @@ class Rewarder:
         Compute reward for each partitial trajectory t:seq_length
         for all t 1:seq_length
 
-        trajectories: (batch_size, seq_len) type: int (?)
+        trajectories: (batch_size, seq_len) type: int 
 
         Returns
         rewards_to_go : (num_batches, batch_size, seq_length)
