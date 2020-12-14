@@ -1,5 +1,6 @@
 import pickle
 from generator import Generator
+import torch 
 
 str_map = pickle.load(open('save/str_map.pkl', 'rb'))
 
