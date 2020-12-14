@@ -1,7 +1,9 @@
 import time
 import numpy as np
 import pickle
+from torch.utils.data import DataLoader
 
+from coco_dataset import COCOImageCaptionsDataset
 from generator import Generator
 from rewarder import Rewarder
 
@@ -51,9 +53,13 @@ rewarder = Rewarder(
     R_LEARNING_RATE,
 )
 
-# TODO: implement pretraining step here and get the right data
-train_data = pickle.load(open("save/train_data.pkl", "rb"))
-generator.pretrain(train_data)
+# Load training data
+train_data = COCOImageCaptionsDataset("save/train_data.pkl")
+train_dataloader = DataLoader(train_data, batch_size=R_BATCH_SIZE, shuffle=True)
+
+# Pretrain generator
+# TODO: Implement training loop here
+#generator.pretrain(train_data)
 
 #########################################################################################
 #  Main Training Loop
@@ -65,7 +71,6 @@ for epoch in range(EPOCH):
     # TODO: Make this write generated sequences to log
     # if epoch % 5 == 0 or epoch == EPOCHS - 1:
     # 	generator.generate(batch_size, 1, None, False, False, True)
-
 
 
     # TRAIN GENERATOR
@@ -93,33 +98,21 @@ for epoch in range(EPOCH):
         g_losses.append(g_loss)
     speed = time.time() - start
     print(
-        "MaxentPolicy Gradient {} round, Speed:{:.3f}, Loss:{:.3f}".format(
-            total_batch, speed, np.mean(g_losses)
+        "MaxentPolicy Gradient {} epoch, Speed:{:.3f}, Loss:{:.3f}".format(
+            epoch, speed, np.mean(g_losses)
         )
     )
-
-
-
-# for batch_idx, (data, label) in enumerate(train_loader):
 
     # TRAIN REWARDER
     start = time.time()
     r_losses = []
-
-
-    
     for _ in range(8):
-        # generate_samples(generator, BATCH_SIZE, generated_num, negative_file)
-        dis_data_loader.load_train_data(positive_file, negative_file)
-        for _ in range(3):
-            dis_data_loader.reset_pointer()
-            for it in range(dis_data_loader.num_batch):
-                x_real = dis_data_loader.next_batch()  # Real (positive) text
-                r_loss = rewarder.train_step(x_real, generator)
-                r_losses.append(r_loss)
+        for batch_idx, trajectories_real in enumerate(train_dataloader):
+            r_loss = rewarder.train_step(trajectories_real, generator)
+            r_losses.append(r_loss)
     speed = time.time() - start
     print(
-        "Reward training {} round, Speed:{:.3f}, Loss:{:.3f}".format(
-            total_batch, speed, np.mean(r_losses)
+        "Reward training {} epoch, Speed:{:.3f}, Loss:{:.3f}".format(
+            epoch, speed, np.mean(r_losses)
         )
     )
