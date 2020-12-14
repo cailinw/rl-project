@@ -4,7 +4,6 @@ import pickle
 
 from torch.utils.data import DataLoader
 
-from coco_dataset import COCOImageCaptionsDataset
 from generator import Generator
 from rewarder import Rewarder
 

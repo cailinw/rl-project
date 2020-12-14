@@ -63,7 +63,7 @@ class Rewarder:
         self.model = RewardModel(
             hidden_state_size, mlp_hidden_size, embed_dim, vocab_size
         )
-        self.optimizer = torch.optim.Adam(self.parameters(), learning_rate)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), self.learning_rate)
 
     def compute_rewards_to_go(
         self, trajectories, generator, roll_num=4, reward_gamma=1.0
@@ -92,12 +92,19 @@ class Rewarder:
             rollouts, rollout_hidden_states = generator.generate(
                 batch_size,
                 roll_num,
-                True,
-                False,
-                False,  # decode
-                seq_len=self.seq_len - t + 1,
-                start_tokens=current_traj,
+                current_traj,
+                inc_hidden_state=True,
+                inc_probs=False,
+                decode=False
             )
+            #     batch_size,
+            #     roll_num,
+            #     True,
+            #     False,
+            #     False,  # decode
+            #     seq_len=self.seq_len - t + 1,
+            #     start_tokens=current_traj,
+            # )
 
             # rollouts_hidden_states.shape =  (roll_num, batch_size, ending_seq_len, hidden_dim)
             # rewards.shape = (roll_num, batch_size)
