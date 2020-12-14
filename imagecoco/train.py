@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 from coco_dataset import COCOImageCaptionsDataset
 from generator import Generator
 from rewarder import Rewarder
+from utils import save, restore_latest
 
 #########################################################################################
 #  Generator  Hyper-parameters
@@ -14,23 +15,25 @@ SEQ_LENGTH = 32  # sequence length
 G_BATCH_SIZE = 512
 generated_num = 20000
 ROLL_NUM = 4
+g_hidden_state_size = 768
 
 #########################################################################################
 #  Reward Hyper-parameters
 #########################################################################################
-r_hidden_state_size = 512
 R_BATCH_SIZE = 512
+r_hidden_state_size = 512
+action_embed_dim = 56
+
+#########################################################################################
+#  Basic Training Parameters and Constants
+#########################################################################################
+vocab_size = 4838
+G_LEARNING_RATE = 5e-5
 R_LEARNING_RATE = 0.01
-
-
-#########################################################################################
-#  Basic Training Parameters
-#########################################################################################
+G_ITERS = 1
+R_ITERS = 10
 EPOCHS = 51
-
-generated_num = 20000
 restore = False
-off_num = 2048
 
 #########################################################################################
 #  Initialization and Pretraining
@@ -40,18 +43,22 @@ off_num = 2048
 str_map = pickle.load(open("save/str_map.pkl", "rb"))
 
 # Load models
-generator = Generator(SEQ_LENGTH, str_map)
-rewarder = Rewarder(
-    SEQ_LENGTH,
-    BATCH_SIZE // 2,
-    BATCH_SIZE // 2,
-    vocab_size,
-    r_hidden_state_size,
-    hidden_state_size,
-    embed_dim,  #
-    mlp_hidden_size,
-    R_LEARNING_RATE,
-)
+if restore:
+    # TODO: Implement this...inside Generator and Rewarder classes
+    # generator = restore_lates("checkpoints/", "g")
+    # rewarder = restore_latest("checkpoints/", "r")
+else:
+    generator = Generator(SEQ_LENGTH, str_map)
+    rewarder = Rewarder(
+        SEQ_LENGTH,
+        R_BATCH_SIZE // 2,
+        R_BATCH_SIZE // 2,
+        vocab_size,
+        g_hidden_state_size,
+        action_embed_dim,
+        r_hidden_state_size,
+        R_LEARNING_RATE,
+    )
 
 # Load training data
 train_data = COCOImageCaptionsDataset("save/train_data.pkl")
@@ -59,7 +66,7 @@ train_dataloader = DataLoader(train_data, batch_size=R_BATCH_SIZE, shuffle=True)
 
 # Pretrain generator
 # TODO: Implement training loop here
-#generator.pretrain(train_data)
+# generator.pretrain(train_data)
 
 #########################################################################################
 #  Main Training Loop
@@ -76,26 +83,27 @@ for epoch in range(EPOCH):
     # TRAIN GENERATOR
     start = time.time()
     g_losses = []
-    # Generate trajectories (samples) from the current policy (generator)
-    num_batches = generated_num // G_batch_size
-    trajectories, probs = generator.generate(
-        G_BATCH_SIZE,
-        num_batches,
-        None,
-        inc_hidden_state=False,
-        inc_probs=True,
-        decode=False,
-    )
-    trajectories = trajectories.reshape(num_batches, G_BATCH_SIZE, SEQ_LENGTH),
-    probs = probs.reshape(num_batches, G_BATCH_SIZE, SEQ_LENGTH, -1)
-    for batch_idx in range(num_batches):
-        rewards_to_go = rewarder.compute_rewards_to_go(
-            trajectories[batch_idx] ,rewarder, ROLL_NUM #, reward_gamma
+    for _ in G_ITERS:
+        # Generate trajectories (samples) from the current policy (generator)
+        num_batches = generated_num // G_BATCH_SIZE
+        trajectories, probs = generator.generate(
+            G_BATCH_SIZE,
+            num_batches,
+            None,
+            inc_hidden_state=False,
+            inc_probs=True,
+            decode=False,
         )
-        g_loss = generator.rl_train_step(
-            trajectories[it], rewards_to_go[it], probs[it], ent_w
-        )
-        g_losses.append(g_loss)
+        trajectories = trajectories.reshape(num_batches, G_BATCH_SIZE, SEQ_LENGTH),
+        probs = probs.reshape(num_batches, G_BATCH_SIZE, SEQ_LENGTH, -1)
+        for batch_idx in range(num_batches):
+            rewards_to_go = rewarder.compute_rewards_to_go(
+                trajectories[batch_idx] ,rewarder, ROLL_NUM #, reward_gamma
+            )
+            g_loss = generator.rl_train_step(
+                trajectories[it], rewards_to_go[it], probs[it], ent_w
+            )
+            g_losses.append(g_loss)
     speed = time.time() - start
     print(
         "MaxentPolicy Gradient {} epoch, Speed:{:.3f}, Loss:{:.3f}".format(
@@ -106,7 +114,7 @@ for epoch in range(EPOCH):
     # TRAIN REWARDER
     start = time.time()
     r_losses = []
-    for _ in range(8):
+    for _ in range(R_ITERS):
         for batch_idx, trajectories_real in enumerate(train_dataloader):
             r_loss = rewarder.train_step(trajectories_real, generator)
             r_losses.append(r_loss)
