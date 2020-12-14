@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 from coco_dataset import COCOImageCaptionsDataset
 from generator import Generator
 from rewarder import Rewarder
-from utils import save, restore_latest
+#from utils import save, restore_latest
 
 #########################################################################################
 #  Generator  Hyper-parameters
@@ -44,6 +44,7 @@ str_map = pickle.load(open("save/str_map.pkl", "rb"))
 
 # Load models
 if restore:
+    pass
     # TODO: Implement this...inside Generator and Rewarder classes
     # generator = restore_lates("checkpoints/", "g")
     # rewarder = restore_latest("checkpoints/", "r")
@@ -73,7 +74,7 @@ train_dataloader = DataLoader(train_data, batch_size=R_BATCH_SIZE, shuffle=True)
 #########################################################################################
 
 
-for epoch in range(EPOCH):
+for epoch in range(EPOCHS):
     # See what sequences are getting generated with the currenty policy
     # TODO: Make this write generated sequences to log
     # if epoch % 5 == 0 or epoch == EPOCHS - 1:
@@ -83,27 +84,27 @@ for epoch in range(EPOCH):
     # TRAIN GENERATOR
     start = time.time()
     g_losses = []
-    for _ in G_ITERS:
-        # Generate trajectories (samples) from the current policy (generator)
-        num_batches = generated_num // G_BATCH_SIZE
-        trajectories, probs = generator.generate(
-            G_BATCH_SIZE,
-            num_batches,
-            None,
-            inc_hidden_state=False,
-            inc_probs=True,
-            decode=False,
-        )
-        trajectories = trajectories.reshape(num_batches, G_BATCH_SIZE, SEQ_LENGTH),
-        probs = probs.reshape(num_batches, G_BATCH_SIZE, SEQ_LENGTH, -1)
-        for batch_idx in range(num_batches):
-            rewards_to_go = rewarder.compute_rewards_to_go(
-                trajectories[batch_idx] ,rewarder, ROLL_NUM #, reward_gamma
-            )
-            g_loss = generator.rl_train_step(
-                trajectories[it], rewards_to_go[it], probs[it], ent_w
-            )
-            g_losses.append(g_loss)
+    #for _ in range(G_ITERS):
+    #    # Generate trajectories (samples) from the current policy (generator)
+    #    num_batches = generated_num // G_BATCH_SIZE
+    #    trajectories, probs = generator.generate(
+    #        G_BATCH_SIZE,
+    #        num_batches,
+    #        None,
+    #        inc_hidden_state=False,
+    #        inc_probs=True,
+    #        decode=False,
+    #    )
+    #    trajectories = trajectories.reshape(num_batches, G_BATCH_SIZE, SEQ_LENGTH),
+    #    probs = probs.reshape(num_batches, G_BATCH_SIZE, SEQ_LENGTH, -1)
+    #    for batch_idx in range(num_batches):
+    #        rewards_to_go = rewarder.compute_rewards_to_go(
+    #            trajectories[batch_idx] ,rewarder, ROLL_NUM #, reward_gamma
+    #        )
+    #        g_loss = generator.rl_train_step(
+    #            trajectories[it], rewards_to_go[it], probs[it], ent_w
+    #        )
+    #        g_losses.append(g_loss)
     speed = time.time() - start
     print(
         "MaxentPolicy Gradient {} epoch, Speed:{:.3f}, Loss:{:.3f}".format(

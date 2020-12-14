@@ -1,7 +1,8 @@
 # import numpy as np
 import torch
+from torch.utils.data import DataLoader
 
-# from dataloader import Dataloader
+from coco_dataset import COCOImageCaptionsDataset
 from rewarder import Rewarder, RewardModel
 from generator import Generator
 
@@ -71,6 +72,14 @@ class Test:
     #     print("num batches: ", dataloader.num_batches)
     #     one_sentence_batch = dataloader.next_batch()
     #     print("one sentence batch: ", one_sentence_batch.shape, one_sentence_batch)
+
+    def test_dataloader(self):
+        train_data = COCOImageCaptionsDataset("save/train_data.pkl")
+        train_dataloader = DataLoader(train_data, batch_size=512, shuffle=True)
+        for batch_idx, (truth, m_in, mask) in enumerate(train_dataloader):
+            print("batch_idx: ", batch_idx)
+            print(truth.shape, m_in.shape, mask.shape)
+            break
 
     def runtests(self):
         self.test_reward_model()
