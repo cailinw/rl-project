@@ -80,16 +80,10 @@ class Generator():
 
                 # map to gpt2 vocab
                 str_map = self.str_map[generated[:, :i+1].cpu()]
-                if i == 0:
-                    str_map = np.array(str_map.tolist()).squeeze(1).tolist()
-                else:
-                    str_map = str_map.tolist()
-
                 gpt_map = self.tokenizer(str_map, padding=True, is_split_into_words=True)
                 tok =  torch.tensor(gpt_map['input_ids']).cuda()
                 attn_mask = torch.tensor(gpt_map['attention_mask']).cuda()
-                print(attn_mask.shape)
-                tok_mask = torch.cat((torch.arange(batch_size*num_batches).unsqueeze(1).cuda(), attn_mask.argmax(1).unsqueeze(1)), dim=1).tolist()
+                tok_mask = torch.cat((torch.arange(batch_size*num_batches).unsqueeze(1).cuda(), attn_mask.argmax(1)), dim=1).tolist()
 
             # decode=put back to string
             if decode:
