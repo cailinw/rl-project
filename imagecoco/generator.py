@@ -108,7 +108,7 @@ class Generator():
 
             return res
 
-        # Gets hidden state for inputted data (for rewards)
+        # Gets hidden state for inputted data (for rewards). returns last one (not for every state)
         def get_hidden_state(self, data):
             self.model.eval()
 
@@ -117,10 +117,11 @@ class Generator():
             gpt_map = self.tokenizer(str_map, padding=True, is_split_into_words=True)
             tok =  torch.tensor(gpt_map['input_ids']).cuda()
             attn_mask = torch.tensor(gpt_map['attention_mask']).cuda()
+            tok_mask = attn_mask.argmax(1)
             
             # pass thru transformer
-            h_state = self.model(input_ids=tok, attention_mask=attn_mask)[2][-1].view(-1, self.model.config.n_embd)
-            h_state = h_state[attn_mask.flatten().bool()]
+            h_state = self.model(input_ids=tok, attention_mask=attn_mask)[2][-1]
+            h_state = batched_index_select(h_state, 1, tok_mask)
 
             return h_state
 
