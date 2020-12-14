@@ -119,7 +119,7 @@ class Generator():
             attn_mask = torch.tensor(gpt_map['attention_mask']).cuda()
             
             # pass thru transformer
-            h_state = self.model(input_ids=tok, attention_mask=attn_mask)[2][-1].view(-1, self.model.n_embd)
+            h_state = self.model(input_ids=tok, attention_mask=attn_mask)[2][-1].view(-1, self.model.config.n_embd)
             h_state = h_state[attn_mask.flatten().bool()]
 
             return h_state
