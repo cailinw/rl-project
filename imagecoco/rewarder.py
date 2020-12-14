@@ -79,7 +79,7 @@ class Rewarder:
         trajectories = trajectories.reshape((-1, self.seq_length))
         batch_size = init_shape[0]
 
-        rewards_to_go = np.zeros(batch_size, self.seq_length)
+        rewards_to_go = torch.zeros((batch_size, self.seq_length))
 
         for t in range(self.seq_length):
             # Compute reward to go for each trajectory at s_t
