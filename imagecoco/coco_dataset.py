@@ -11,10 +11,10 @@ class COCOImageCaptionsDataset(Dataset):
 			pkl_file (string): Path to the file with tokenized sentences.
 		"""
 		self.pkl_file = pkl_file
-		self.data = pickle.load(open(pkl_file, "rb"))  # (num_sentences, m_in)
+		self.truth, self.m_in, self.mask = pickle.load(open(pkl_file, "rb"))  # (num_sentences, m_in)
 
 	def __len__(self):
-		return len(self.data)
+		return len(self.truth)
 
 	def __getitem__(self, idx):
-		return self.data[idx]
+		return self.truth[idx], self.m_in[idx], self.mask[idx]
