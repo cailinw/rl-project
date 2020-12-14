@@ -27,7 +27,7 @@ action_embed_dim = 56
 #########################################################################################
 #  Basic Training Parameters and Constants
 #########################################################################################
-vocab_size = 4838
+vocab_size = 4839
 G_LEARNING_RATE = 5e-5
 R_LEARNING_RATE = 0.01
 G_ITERS = 1
