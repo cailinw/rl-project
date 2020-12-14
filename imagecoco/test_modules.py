@@ -1,9 +1,12 @@
-import numpy as np
+# import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
 from coco_dataset import COCOImageCaptionsDataset
 from rewarder import Rewarder, RewardModel
+from generator import Generator
+
+import pickle
 
 
 class Test:
@@ -13,7 +16,7 @@ class Test:
         self.seq_length = seq_length
         self.batch_size = batch_size
         self.vocab_size = 4348
-        self.hidden_state_size = (hidden_state_size,)
+        self.hidden_state_size = hidden_state_size
         self.embed_dim = embed_dim
         self.mlp_hidden_size = mlp_hidden_size
         self.learning_rate = 0.01
@@ -29,11 +32,12 @@ class Test:
         )
 
         x = torch.randn((self.batch_size, hidden_state_size))
-        a = torch.randint(1, self.vocab_size, (self.batch_size,))
+        a = torch.randint(self.vocab_size, (self.batch_size,))
 
         result = model(x, a)
-        print(result)
-        print(result.shape)
+
+        assert result.shape[0] == self.batch_size
+        assert result.shape[1] == 1
 
     def test_rewarder_rewards_to_go(self):
         rewarder = Rewarder(
@@ -46,8 +50,13 @@ class Test:
             self.mlp_hidden_size,
             self.learning_rate,
         )
-        trajectories = torch.randn((self.batch_size, self.seq_length))
-        rewarder.rewards_to_go(trajectories, 4)
+        trajectories = torch.randint(
+            self.vocab_size, (self.batch_size, self.seq_length)
+        )
+        str_map = pickle.load(open("save/str_map.pkl", "rb"))
+        print(type(str_map))
+        generator = Generator(self.seq_length, str_map)
+        rewarder.rewards_to_go(trajectories, generator, roll_num=4)
 
     # def test_rewarder_train_step(self):
     # 	generator = Generator()
@@ -74,9 +83,9 @@ class Test:
 
     def runtests(self):
         self.test_reward_model()
-        # self.test_rewarder_rewards_to_go()
+        self.test_rewarder_rewards_to_go()
         # self.test_rewarder_train_step()
-        self.test_dataloader()
+        # self.test_dataloader()
 
 
 if __name__ == "__main__":
