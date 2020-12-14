@@ -1,21 +1,20 @@
-import os
-import random
 import time
 import numpy as np
-import torch
+import pickle
 
-from dataloader import Gen_Data_loader, Dis_dataloader
+from torch.utils.data import DataLoader
+
+from coco_dataset import COCOImageCaptionsDataset
 from generator import Generator
 from rewarder import Rewarder
-from rollout import Rollout
-
 
 #########################################################################################
 #  Generator  Hyper-parameters
 #########################################################################################
-SEQ_LENGTH = 32 # sequence length
+SEQ_LENGTH = 32  # sequence length
 START_TOKEN = 0
 BATCH_SIZE = 512
+NUM_BATCHES = 4
 ROLL_NUM = 4
 # TODO: Add hyperparameters here
 
@@ -23,12 +22,12 @@ ROLL_NUM = 4
 #  Reward Hyper-parameters
 #########################################################################################
 MID_LAYER_G = [256]
-MID_LAYER_R = [512]
+MID_LAYER_R = 512
 re_dropout_keep_prob = 0.45
 re_l2_reg_lambda = 1e-5
 re_batch_size = BATCH_SIZE
 ent_w = 1.0
-R_decay = 16 # SGD learn epoch decay
+R_decay = 16  # SGD learn epoch decay
 R_rate = 0.01
 # TODO: Add hyperparameters here
 
@@ -37,36 +36,39 @@ R_rate = 0.01
 #  Basic Training Parameters
 #########################################################################################
 TOTAL_BATCH = 51
-positive_file = 'save/real_data.txt'
-negative_file = 'save/generator_sample'+str(ent_w)+'.txt'
-eval_file_prefix = 'save/evaler_file'+str(ent_w)
-pretrain_file_prefix = 'save/pretrain_file'+str(ent_w)
+positive_file = "save/real_data.txt"
+negative_file = "save/generator_sample" + str(ent_w) + ".txt"
+eval_file_prefix = "save/evaler_file" + str(ent_w)
+pretrain_file_prefix = "save/pretrain_file" + str(ent_w)
 generated_num = 20000
 restore = False
-off_num = 2048  # off_policy samples(use PPO2)
+off_num = 2048
 
 
 #########################################################################################
-#  Helper Functions
+#  Initialization and Pretraining
 #########################################################################################
 
-def generate_samples(generator, batch_size, generated_num, output_file):
-	# Generate Samples
-	generated_samples = []
-	for _ in range(int(generated_num / batch_size)):
-		samples = trainable_model.generate()
-		generated_samples.extend(samples)
 
-	with open(output_file, 'w') as fout:
-		for poem in generated_samples:
-			buffer = ' '.join([str(x) for x in poem]) + '\n'
-			fout.write(buffer)
+token_map = pickle.load(open("save/token_map.pkt", "rb"))
+assert len(token_map) == vocab_size
 
-#########################################################################################
-#  Pretrain Transformer
-#########################################################################################
-token_map = pickle.load(open('save/token_map.pkl', 'rb'))
-generator = Generator(SEQ_LEN, vocab_size, token_map)
+# Load models
+generator = Generator(
+	SEQ_LENGTH,
+	token_map
+)
+rewarder = Rewarder(
+	SEQ_LENGTH,
+	BATCH_SIZE // 2,
+	BATCH_SIZE // 2,
+	vocab_size,
+	MID_LAYER_R,
+	hidden_state_size,
+	embed_dim, #
+	MID_LAYER_R,
+	R_rate
+)
 
 train_data = pickle.load(open('save/train_data.pkl', 'rb'))
 generator.pretrain(train_data)
@@ -75,49 +77,63 @@ generator.pretrain(train_data)
 #  Main Training Loop
 #########################################################################################
 
-# Get dataloaders
-gen_data_loader = Gen_Data_loader(BATCH_SIZE)
-dis_data_loader = Dis_dataloader(re_batch_size)
-
-# Load models
-# TODO: Initialize these classes with correct params
-rewarder = Rewarder()
-rollout = Rollout(generator, rewarder)
-
-# Create batches from training dataset
-gen_data_loader.create_batches(positive_file)
+# Training dataset dataloader
+train_dataset = COCOImageCaptionsDataset("save/real_data.txt") # TODO...
+dataloader = DataLoader(train_dataset, batch_size=BATCH_SIZE,
+                        shuffle=True, num_workers=0)
 
 for total_batch in range(TOTAL_BATCH):
-	# See what sequences are getting generated with the currently policy
-	# if total_batch % 5 == 0 or total_batch == TOTAL_BATCH - 1:
-	# 	generate_samples(generator, BATCH_SIZE, generated_num, eval_file_prefix + str(total_batch))
+    # See what sequences are getting generated with the currently policy
+    # TODO: Uncomment this to save samples throughout training
+    # if total_batch % 5 == 0 or total_batch == TOTAL_BATCH - 1:
+    # 	generate_samples(generator, BATCH_SIZE, generated_num, eval_file_prefix + str(total_batch))
 
-	# TRAIN GENERATOR
-	speed = time.time() - start
-	g_losses = []
-	# Generate trajectories (samples) from the current policy (generator)
-	trajectories, policy_probs = rollout.sample_from_policy(BATCH_SIZE, off_num)
-	# Compute the rewards for each of the trajectories at each time step
-	# (batch_size, seq_length)
-	rewards_to_go = rollout.compute_rewards_to_go(trajectories, ROLL_NUM)
-	# Update the generator
-	for it in range(rewards_to_go.shape[0]):
-		g_loss = generator.rl_train_step(trajectories[it], avg_reward[it], policy_probs[it], ent_w)
-		g_losses.append(g_loss)
-	speed = time.time() - start
-	print('MaxentPolicy Gradient {} round, Speed:{:.3f}, Loss:{:.3f}'.format(total_batch, speed, np.mean(g_losses)))
+    # TRAIN GENERATOR
+    start = time.time()
+    g_losses = []
+    # Generate trajectories (samples) from the current policy (generator)
+    trajectories, probs = generator.generate(
+        batch_size,
+        generated_num // batch_size,
+        inc_hidden_state=False,
+        inc_probs=True,
+        decode=False,
+    )
+    trajectories = trajectories.reshape(generated_num // batch_size, batch_size, SEQ_LENGTH),
+    probs = probs.reshape(generated_num // batch_size, batch_size, SEQ_LENGTH, -1)
+    # Compute the rewards for each of the trajectories at each time step
+    # (num_batches, batch_size, seq_length)
+    rewards_to_go = rewarder.compute_rewards_to_go(trajectories, rewarder, ROLL_NUM) #, reward_gamma)
+    # Update the generator
+    for it in range(NUM_BATCHES):
+        g_loss = generator.rl_train_step(
+            trajectories[it], rewards_to_go[it], probs[it], ent_w
+        )
+        g_losses.append(g_loss)
+    speed = time.time() - start
+    print(
+        "MaxentPolicy Gradient {} round, Speed:{:.3f}, Loss:{:.3f}".format(
+            total_batch, speed, np.mean(g_losses)
+        )
+    )
 
-	# TRAIN REWARDER
-	start = time.time()
-	r_losses = []
-	for _ in range(8):
-		generate_samples(generator, BATCH_SIZE, generated_num, negative_file)
-		dis_data_loader.load_train_data(positive_file, negative_file)
-		for _ in range(3):
-			dis_data_loader.reset_pointer()
-			for it in range(dis_data_loader.num_batch):
-				x_text = dis_data_loader.next_batch() # Real (positive) and generated (negative) text
-				r_loss = rewarder.train_step(x_text, generator)
-				r_losses.append(r_loss)
-	speed = time.time() - start
-	print('Reward training {} round, Speed:{:.3f}, Loss:{:.3f}'.format(total_batch, speed, np.mean(r_losses)))
+    # TRAIN REWARDER
+    start = time.time()
+    r_losses = []
+    for _ in range(8):
+        # generate_samples(generator, BATCH_SIZE, generated_num, negative_file)
+        dis_data_loader.load_train_data(positive_file, negative_file)
+        for _ in range(3):
+            dis_data_loader.reset_pointer()
+            for it in range(dis_data_loader.num_batch):
+                x_real = (
+                    dis_data_loader.next_batch()
+                )  # Real (positive) text
+                r_loss = rewarder.train_step(x_real, generator)
+                r_losses.append(r_loss)
+    speed = time.time() - start
+    print(
+        "Reward training {} round, Speed:{:.3f}, Loss:{:.3f}".format(
+            total_batch, speed, np.mean(r_losses)
+        )
+    )
