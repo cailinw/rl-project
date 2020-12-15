@@ -142,22 +142,37 @@ class Rewarder:
 
         reward_by_example = torch.zeros(generator_batch_size).cuda()
         log_w = np.zeros(generator_batch_size)
-        for j in range(generator_batch_size):
-            reward_by_example[j] = self.model(
-                hidden_states_gen[j], actions_gen[j]
-            ).sum()
 
-            # We cast anything in the computation of w[j] as numpy arrays so that
-            # gradient does not pass through them.
-            # Index the log_probs (probability for all actions given tokens in the sequence),
-            # using action_gen, which pulls out the action that was actually taken.
-            # actions_gen[j].shape = seq_len
-            # log_probs[j].shape = (seq_len, vocab_size)
-            indices = actions_gen[j].unsqueeze(-1)
+        # Get rewards as a function of example, by summing over the sequence but not the batch size.
+        reward_by_example = self.model(
+            hidden_states_gen.view(-1, self.hidden_state_size), actions_gen[0].view(-1),
+        )
+        reward_by_example = reward_by_example.view(
+            generator_batch_size, self.seq_length
+        ).sum(axis=1)
 
-            # Gather values along vocabulary axis.
-            log_q = torch.gather(log_probs[j], 1, indices).sum().cpu().data.numpy()
-            log_w[j] = reward_by_example[j].cpu().data.numpy() - log_q
+        # (batch_size, seq_len, 1)
+        indices = actions_gen.unsqueeze(-1)
+        # (batch_size, seq_len, 1)
+        log_q = torch.gather(log_probs, 1, indices).sum(axis=1).cpu().data.numpy()
+        log_w = reward_by_example.cpu().data.numpy() - log_q
+
+        # for j in range(generator_batch_size):
+        #     reward_by_example[j] = self.model(
+        #         hidden_states_gen[j], actions_gen[j]
+        #     ).sum()
+
+        #     # We cast anything in the computation of w[j] as numpy arrays so that
+        #     # gradient does not pass through them.
+        #     # Index the log_probs (probability for all actions given tokens in the sequence),
+        #     # using action_gen, which pulls out the action that was actually taken.
+        #     # actions_gen[j].shape = seq_len
+        #     # log_probs[j].shape = (seq_len, vocab_size)
+        #     indices = actions_gen[j].unsqueeze(-1)
+
+        #     # Gather values along vocabulary axis.
+        #     log_q = torch.gather(log_probs[j], 1, indices).sum().cpu().data.numpy()
+        #     log_w[j] = reward_by_example[j].cpu().data.numpy() - log_q
 
         log_w -= log_w.max()
         w = torch.exp(torch.from_numpy(log_w)).cuda()
