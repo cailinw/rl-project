@@ -107,7 +107,7 @@ for it in range(NUM_ITERS):
     loss_sum = 0
     for r_it in range(R_ITERS):
         real_trajectories = next(iter(train_dataloader))
-        r_loss = rewarder.train_step(real_trajectories, generator, generated_batch_size)
+        r_loss = rewarder.train_step(real_trajectories[0], generator, generated_batch_size)
         loss_sum += r_loss
     speed = time.time() - start
     r_losses.append(loss_sum / R_ITERS)
