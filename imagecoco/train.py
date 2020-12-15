@@ -8,7 +8,7 @@ from IPython import display
 from coco_dataset import COCOImageCaptionsDataset
 from generator import Generator
 from rewarder import Rewarder
-#from utils import save, restore_latest
+from utils import save
 
 #########################################################################################
 #  Hyper-parameters
@@ -94,7 +94,7 @@ for it in range(NUM_ITERS):
         loss_sum += g_loss
     speed = time.time() - start
     g_losses.append(loss_sum / G_ITERS)
-    # generator.save_model()  # TODO: Add this
+    save(generator.model, "/checkpoints/model_checkpoints/generator_" + str(it) + ".pt")
     print(
         "MaxentPolicy Gradient {} iteration, Speed:{:.3f}, Loss:{:.3f}".format(
             it, speed, g_loss
@@ -111,7 +111,7 @@ for it in range(NUM_ITERS):
         loss_sum += r_loss
     speed = time.time() - start
     r_losses.append(loss_sum / R_ITERS)
-    # rewarder.save_model()  # TODO: Add this
+    save(rewarder.model, "/checkpoints/model_checkpoints/rewarder_" + str(it) + ".pt")
     print(
         "Reward training {} iteration, Speed:{:.3f}, Loss:{:.3f}".format(
             it, speed, r_loss
@@ -123,7 +123,7 @@ for it in range(NUM_ITERS):
     if it % 5 == 0 or it == NUM_ITERS - 1:
         # Generate samples
         generated_samples = generator.generate(batch_size, 1, None, False, False, True)
-        output_file = "/save/generated_samples/generator_sample_" + str(it) + ".txt"
+        output_file = "/checkpoints/generated_samples/generator_sample_" + str(it) + ".txt"
         with open(output_file, 'w') as fout:
         for sentence in generated_samples:
             buffer = ' '.join([str(x) for x in poem]) + '\n'
