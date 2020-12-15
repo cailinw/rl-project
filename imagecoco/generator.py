@@ -245,3 +245,5 @@ class Generator:
         self.optim.zero_grad()
         loss.backward()
         self.optim.step()
+
+        return loss.cpu().data().numpy()

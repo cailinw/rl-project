@@ -104,8 +104,8 @@ for epoch in range(EPOCHS):
     start = time.time()
     losses = []
     for _ in range(R_ITERS):
-        for batch_idx, trajectories_real in enumerate(train_dataloader):
-            r_loss = rewarder.train_step(trajectories_real, generator, G_BATCH_SIZE)
+        for batch_idx, (truth, m_in, mask) in enumerate(train_dataloader):
+            r_loss = rewarder.train_step(truth, generator, G_BATCH_SIZE)
             losses.append(r_loss)
     speed = time.time() - start
     r_loss = np.mean(losses)
