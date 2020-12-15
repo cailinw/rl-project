@@ -140,10 +140,10 @@ class Rewarder:
 
         actions_gen = actions_gen[0]
 
-        reward_gen = 0
-        w = np.zeros(generator_batch_size)
+        reward_by_example = torch.zeros(generator_batch_size)
+        log_w = np.zeros(generator_batch_size)
         for j in range(generator_batch_size):
-            reward = self.model(hidden_states_gen[j], actions_gen[j]).sum()
+            reward_by_example[j] = self.model(hidden_states_gen[j], actions_gen[j]).sum()
 
             # We cast anything in the computation of w[j] as numpy arrays so that
             # gradient does not pass through them.
@@ -155,9 +155,11 @@ class Rewarder:
 
             # Gather values along vocabulary axis.
             log_q = torch.gather(log_probs[j], 1, indices).sum().cpu().data.numpy()
-            w[j] = math.exp(reward.cpu().data.numpy() - log_q)
-            reward_gen += w[j] * reward
-        reward_gen /= w.sum()
+            log_w[j] = reward_by_example[j].cpu().data.numpy() - log_q
+        
+        log_w -= log_w.max()
+        w = torch.exp(torch.from_numpy(log_w).cuda()
+        reward_gen = torch.sum((w * reward_by_example) / w.sum())
 
         loss = -(reward_real - reward_gen)
         self.optimizer.zero_grad()
