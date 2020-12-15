@@ -122,12 +122,12 @@ for it in range(NUM_ITERS):
     # Logging
     if it % 5 == 0 or it == NUM_ITERS - 1:
         # Generate samples
-        generated_samples = generator.generate(batch_size, 1, None, False, False, True)
+        generated_samples = generator.generate(generator_batch_size, 1, None, False, False, True)
         output_file = "/checkpoints/generated_samples/generator_sample_" + str(it) + ".txt"
         with open(output_file, 'w') as fout:
-        for sentence in generated_samples:
-            buffer = ' '.join([str(x) for x in poem]) + '\n'
-            fout.write(buffer)
+            for sentence in generated_samples:
+                buffer = ' '.join([str(x) for x in poem]) + '\n'
+                fout.write(buffer)
 
         # Plot loss
         display.clear_output(wait=True)
