@@ -11,37 +11,41 @@ from rewarder import Rewarder
 #from utils import save, restore_latest
 
 #########################################################################################
-#  Generator  Hyper-parameters
+#  Hyper-parameters
 #########################################################################################
-SEQ_LENGTH = 32  # sequence length
-G_BATCH_SIZE = 512
-generated_num = 20000
-ROLL_NUM = 4
-g_hidden_state_size = 768
+# Constants
+vocab_size = 4839
 
-#########################################################################################
-#  Reward Hyper-parameters
-#########################################################################################
-R_BATCH_SIZE = 512
+# General parameters
+SEQ_LENGTH = 32
+
+# Model parameters
+g_hidden_state_size = 768
 r_hidden_state_size = 512
 action_embed_dim = 56
 
-#########################################################################################
-#  Basic Training Parameters and Constants
-#########################################################################################
-vocab_size = 4839
+
+# Generator training step parameters
+generator_batch_size = 64
+roll_num = 4
+
+# Rewarder training step parameters
+real_batch_size = 64
+generated_batch_size = 64
+
+# Training parameters
 G_LEARNING_RATE = 5e-5
 R_LEARNING_RATE = 0.01
+NUM_ITERS = 51
 G_ITERS = 1
 R_ITERS = 10
-EPOCHS = 51
 restore = False
+
 
 #########################################################################################
 #  Initialization and Pretraining
 #########################################################################################
 
-# TODO: What should str map be? Unpickle it into dict here?
 str_map = pickle.load(open("save/str_map.pkl", "rb"))
 
 # Load models
@@ -63,7 +67,7 @@ else:
 
 # Load training data
 train_data = COCOImageCaptionsDataset("save/train_data.pkl")
-train_dataloader = DataLoader(train_data, batch_size=R_BATCH_SIZE, shuffle=True)
+train_dataloader = DataLoader(train_data, batch_size=real_batch_size, shuffle=True)
 
 # Pretrain generator
 # TODO: Implement training loop here
@@ -78,21 +82,18 @@ r_losses = []
 #########################################################################################
 
 
-for epoch in range(EPOCHS):
+for it in range(NUM_ITERS):
 
     # TRAIN GENERATOR
     start = time.time()
-    losses = []
-    for _ in range(G_ITERS):
-        num_batches = generated_num // G_BATCH_SIZE
-        for batch_idx in range(num_batches):
-            g_loss = generator.rl_train_step(
-                rewarder, G_BATCH_SIZE
-            )
-            losses.append(g_loss)
+    loss_sum = 0
+    for g_it in range(G_ITERS):
+        g_loss = generator.rl_train_step(
+            rewarder, generator_batch_size
+        )
+        loss_sum += g_loss
     speed = time.time() - start
-    g_loss = np.mean(losses)
-    g_losses.append(g_loss)
+    g_losses.append(loss_sum / G_ITERS)
     # generator.save_model()  # TODO: Add this
     print(
         "MaxentPolicy Gradient {} epoch, Speed:{:.3f}, Loss:{:.3f}".format(
@@ -100,16 +101,16 @@ for epoch in range(EPOCHS):
         )
     )
 
+
     # TRAIN REWARDER
     start = time.time()
-    losses = []
-    for _ in range(R_ITERS):
-        for batch_idx, (truth, m_in, mask) in enumerate(train_dataloader):
-            r_loss = rewarder.train_step(truth, generator, G_BATCH_SIZE)
-            losses.append(r_loss)
+    loss_sum = 0
+    for r_it in range(R_ITERS):
+        real_trajectories = next(iter(train_dataloader))
+        r_loss = rewarder.train_step(real_trajectories, generator, generated_batch_size)
+        loss_sum += r_loss
     speed = time.time() - start
-    r_loss = np.mean(losses)
-    r_losses.append(r_loss)
+    r_losses.append(loss_sum / R_ITERS)
     # rewarder.save_model()  # TODO: Add this
     print(
         "Reward training {} epoch, Speed:{:.3f}, Loss:{:.3f}".format(
@@ -119,10 +120,10 @@ for epoch in range(EPOCHS):
 
 
     # Logging
-    if epoch % 5 == 0 or epoch == EPOCHS - 1:
+    if it % 5 == 0 or it == NUM_ITERS - 1:
         # Generate samples
         generated_samples = generator.generate(batch_size, 1, None, False, False, True)
-        output_file = "/save/generated_samples/generator_sample_" + str(epoch) + ".txt"
+        output_file = "/save/generated_samples/generator_sample_" + str(it) + ".txt"
         with open(output_file, 'w') as fout:
         for sentence in generated_samples:
             buffer = ' '.join([str(x) for x in poem]) + '\n'
