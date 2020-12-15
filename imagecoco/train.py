@@ -96,8 +96,8 @@ for it in range(NUM_ITERS):
     g_losses.append(loss_sum / G_ITERS)
     # generator.save_model()  # TODO: Add this
     print(
-        "MaxentPolicy Gradient {} epoch, Speed:{:.3f}, Loss:{:.3f}".format(
-            epoch, speed, g_loss
+        "MaxentPolicy Gradient {} iteration, Speed:{:.3f}, Loss:{:.3f}".format(
+            it, speed, g_loss
         )
     )
 
@@ -113,8 +113,8 @@ for it in range(NUM_ITERS):
     r_losses.append(loss_sum / R_ITERS)
     # rewarder.save_model()  # TODO: Add this
     print(
-        "Reward training {} epoch, Speed:{:.3f}, Loss:{:.3f}".format(
-            epoch, speed, r_loss
+        "Reward training {} iteration, Speed:{:.3f}, Loss:{:.3f}".format(
+            it, speed, r_loss
         )
     )
 
@@ -134,5 +134,4 @@ for it in range(NUM_ITERS):
         ax[0].cla(); ax[0].plot(g_losses)
         ax[1].cla(); ax[1].plot(r_losses)
         display.display(plt.gcf())
-        print(epoch, g_loss, r_loss)
-
+        print(it, g_loss, r_loss)
