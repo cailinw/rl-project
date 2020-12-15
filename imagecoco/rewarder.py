@@ -165,4 +165,4 @@ class Rewarder:
         # utils.clip_grad_norm(self.model.parameters(), 40)
         self.optimizer.step()
 
-        retuurn loss.cpu().data().numpy()
+        return loss.cpu().data.numpy()

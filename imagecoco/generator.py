@@ -246,4 +246,4 @@ class Generator:
         loss.backward()
         self.optim.step()
 
-        return loss.cpu().data().numpy()
+        return loss.cpu().data.numpy()
