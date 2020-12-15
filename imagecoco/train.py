@@ -39,6 +39,7 @@ R_LEARNING_RATE = 0.01
 NUM_ITERS = 51
 G_ITERS = 1
 R_ITERS = 10
+PRETRAIN_ITERS = 20
 restore = False
 
 
@@ -70,8 +71,11 @@ train_data = COCOImageCaptionsDataset("save/train_data.pkl")
 train_dataloader = DataLoader(train_data, batch_size=real_batch_size, shuffle=True)
 
 # Pretrain generator
-# TODO: Implement training loop here
-# generator.pretrain(train_data)
+print("Pretraining generator")
+for it in range(PRETRAIN_ITERS):
+    batch_data = next(iter(train_dataloader))
+    generator.pretrain(batch_data)
+    print(".", end="", flush=True)
 
 fig, ax = plt.subplots(1,2,figsize=(14,7))
 g_losses = []
