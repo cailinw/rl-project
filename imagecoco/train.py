@@ -1,7 +1,9 @@
 import time
+import matplotlib.pyplot as plt
 import numpy as np
 import pickle
 from torch.utils.data import DataLoader
+from IPython import display
 
 from coco_dataset import COCOImageCaptionsDataset
 from generator import Generator
@@ -67,45 +69,69 @@ train_dataloader = DataLoader(train_data, batch_size=R_BATCH_SIZE, shuffle=True)
 # TODO: Implement training loop here
 # generator.pretrain(train_data)
 
+fig, ax = plt.subplots(1,2,figsize=(14,7))
+g_losses = []
+r_losses = []
+
 #########################################################################################
 #  Main Training Loop
 #########################################################################################
 
 
 for epoch in range(EPOCHS):
-    # See what sequences are getting generated with the currenty policy
-    # TODO: Make this write generated sequences to log
-    # if epoch % 5 == 0 or epoch == EPOCHS - 1:
-    # 	generator.generate(batch_size, 1, None, False, False, True)
-
 
     # TRAIN GENERATOR
     start = time.time()
-    g_losses = []
+    losses = []
     for _ in range(G_ITERS):
         num_batches = generated_num // G_BATCH_SIZE
         for batch_idx in range(num_batches):
             g_loss = generator.rl_train_step(
                 rewarder, G_BATCH_SIZE
             )
-            g_losses.append(g_loss)
+            losses.append(g_loss)
     speed = time.time() - start
+    g_loss = np.mean(losses)
+    g_losses.append(g_loss)
+    # generator.save_model()  # TODO: Add this
     print(
         "MaxentPolicy Gradient {} epoch, Speed:{:.3f}, Loss:{:.3f}".format(
-            epoch, speed, np.mean(g_losses)
+            epoch, speed, g_loss
         )
     )
 
     # TRAIN REWARDER
     start = time.time()
-    r_losses = []
+    losses = []
     for _ in range(R_ITERS):
-        for batch_idx, trajectories_real in enumerate(train_dataloader):
-            r_loss = rewarder.train_step(trajectories_real, generator, G_BATCH_SIZE)
-            r_losses.append(r_loss)
+        for batch_idx, (truth, m_in, mask) in enumerate(train_dataloader):
+            r_loss = rewarder.train_step(truth, generator, G_BATCH_SIZE)
+            losses.append(r_loss)
     speed = time.time() - start
+    r_loss = np.mean(losses)
+    r_losses.append(r_loss)
+    # rewarder.save_model()  # TODO: Add this
     print(
         "Reward training {} epoch, Speed:{:.3f}, Loss:{:.3f}".format(
-            epoch, speed, np.mean(r_losses)
+            epoch, speed, r_loss
         )
     )
+
+
+    # Logging
+    if epoch % 5 == 0 or epoch == EPOCHS - 1:
+        # Generate samples
+        generated_samples = generator.generate(batch_size, 1, None, False, False, True)
+        output_file = "/save/generated_samples/generator_sample_" + str(epoch) + ".txt"
+        with open(output_file, 'w') as fout:
+        for sentence in generated_samples:
+            buffer = ' '.join([str(x) for x in poem]) + '\n'
+            fout.write(buffer)
+
+        # Plot loss
+        display.clear_output(wait=True)
+        ax[0].cla(); ax[0].plot(g_losses)
+        ax[1].cla(); ax[1].plot(r_losses)
+        display.display(plt.gcf())
+        print(epoch, g_loss, r_loss)
+

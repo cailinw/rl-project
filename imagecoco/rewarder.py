@@ -166,3 +166,5 @@ class Rewarder:
         loss.backward()
         # utils.clip_grad_norm(self.model.parameters(), 40)
         self.optimizer.step()
+
+        return loss.cpu().data.numpy()
