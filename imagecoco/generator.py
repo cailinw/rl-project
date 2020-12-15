@@ -176,24 +176,30 @@ class Generator:
         """
         self.model.train()
 
-        # get data from batch
-        truth, m_in, mask = batch
-        mask = mask.flatten().bool()
-        truth = truth.flatten()
+        # Get data from batch
+        mask = batch[2]
+        m_in = batch[1]
+        batch = batch[0]
+        batch_size, seq_len = batch.shape
 
-        # perform one train step
-        self.optim.zero_grad()  # clear grad
+        # Convert to gpt2 vocab
+        data = batch[:, 0 : seq_len]
+        str_map = [self.str_map[data[i]].tolist() for i in range(len(data))]
+        gpt_map = self.tokenizer(str_map, padding=True, is_split_into_words=True)
+        tok = torch.tensor(gpt_map["input_ids"]).cuda()
+        attn_mask = torch.tensor(gpt_map["attention_mask"]).cuda()
+        tok_mask = attn_mask.argmax(1)
 
-        # need to calc loss manually because of switching vocab (split into multiple tokens)
+        # Pass through model
+        prob, _, _ = self.model(input_ids=tok, attention_mask=attn_mask)
+        prob = batched_index_select(prob, 1, tok_mask)
 
-        # get out prob
-        prob = F.softmax(self.model(input_ids=m_in)[0], dim=-1).view(
+        prob = F.softmax(prob, dim=-1).view(
             -1, self.vocab_size
         )
-        prob = prob[mask]
 
         # compute loss & backprop
-        loss = self.loss(prob, truth)
+        loss = self.loss(prob, data[:, -1])
         loss.backward()
         self.optim.step()
 
