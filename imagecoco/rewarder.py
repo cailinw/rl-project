@@ -58,8 +58,9 @@ class Rewarder:
         ).cuda()
         self.optimizer = torch.optim.Adam(self.model.parameters(), self.learning_rate)
 
-    def restore_model(self, saved_model):
-        self.model = saved_model
+    def restore_model(self, checkpoint_file):
+        checkpoint = torch.load(checkpoint_file)
+        self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer = torch.optim.Adam(self.model.parameters(), self.learning_rate)
 
     def compute_rewards_to_go(

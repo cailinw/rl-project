@@ -46,8 +46,9 @@ class Generator:
         # map to map non-gpt vocab back into strings
         self.str_map = np.array(str_map)
 
-    def restore_model(self, saved_model):
-        self.model = saved_model
+    def restore_model(self, checkpoint_file):
+        checkpoint = torch.load(checkpoint_file)
+        self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optim = AdamW(self.model.parameters(), lr=5e-5)
 
     def generate(
