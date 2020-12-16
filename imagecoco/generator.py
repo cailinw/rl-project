@@ -46,6 +46,10 @@ class Generator:
         # map to map non-gpt vocab back into strings
         self.str_map = np.array(str_map)
 
+    def restore_model(self, saved_model):
+        self.model = saved_model
+        self.optim = AdamW(self.model.parameters(), lr=5e-5)
+
     def generate(
         self, batch_size, num_batches, start_toks, inc_hidden_state, inc_probs, decode
     ):
