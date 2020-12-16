@@ -60,7 +60,7 @@ class Rewarder:
 
     def restore_model(self, checkpoint_file):
         checkpoint = torch.load(checkpoint_file)
-        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.model.load_state_dict(checkpoint)
         self.optimizer = torch.optim.Adam(self.model.parameters(), self.learning_rate)
 
     def compute_rewards_to_go(

@@ -48,7 +48,7 @@ class Generator:
 
     def restore_model(self, checkpoint_file):
         checkpoint = torch.load(checkpoint_file)
-        self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.model.load_state_dict(checkpoint)
         self.optim = AdamW(self.model.parameters(), lr=5e-5)
 
     def generate(
