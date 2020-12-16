@@ -72,10 +72,15 @@ train_dataloader = DataLoader(train_data, batch_size=real_batch_size, shuffle=Tr
 
 # Pretrain generator
 print("Pretraining generator")
+pretrain_losses = []
 for it in range(PRETRAIN_ITERS):
     batch_data = next(iter(train_dataloader))
-    loss = generator.pretrain(batch_data)
-    print(loss, end=" ", flush=True)
+    loss = generator.pretrain_step(batch_data[0]).data.cpu().numpy()
+    pretrain_losses.append(loss)
+
+
+plt.plot(np.arange(len(pretrain_losses)), np.array(pretrain_losses))
+plt.show()
 
 fig, ax = plt.subplots(1,2,figsize=(14,7))
 g_losses = []
