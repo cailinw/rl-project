@@ -176,67 +176,31 @@ class Generator:
     # fine tune new FC layer  using normal transformer opt & train data
     # https://huggingface.co/transformers/custom_datasets.html
     def pretrain_step(self, batch):
-        """
-        pretrain_step: one step of pretraining
+         """
+         pretrain_step: one step of pretraining
 
-        param: batch 
-        """
-        self.model.train()
+         param: batch 
+         """
+         self.model.train()
 
-        batch_size, seq_len = batch.shape
+         # Get data from batch
+         data, m_in, tok_mask = batch
 
-        tokens, probs = self.generate(batch_size, 1, batch, False, True, False)
+         # Pass through model
+         prob, _, _ = self.model(input_ids=m_in)
+         prob = batched_index_select(prob, 1, tok_mask.bool())
 
-        probs = probs.view(batch_size * seq_len, -1)
-        batch = batch.view(batch_size * seq_len).cuda()
+         prob = F.softmax(prob, dim=-1).view(
+             -1, self.vocab_size
+         )
 
+         # compute loss & backprop
+         loss = self.loss(prob, data.flatten())
+         loss.backward()
+         self.optim.step()
 
-        # compute loss & backprop
-        self.optim.zero_grad()
-        loss = self.loss(probs, batch)
-        loss = Variable(loss, requires_grad = True)
-        loss.backward()
-        self.optim.step()
-
-        # ret loss
-        return loss
-    # def pretrain_step(self, batch):
-    #     """
-    #     pretrain_step: one step of pretraining
-
-    #     param: batch 
-    #     """
-    #     self.model.train()
-
-    #     # Get data from batch
-    #     mask = batch[2]
-    #     m_in = batch[1]
-    #     batch = batch[0]
-    #     batch_size, seq_len = batch.shape
-
-    #     # Convert to gpt2 vocab
-    #     data = batch[:, 0 : seq_len]
-    #     str_map = [self.str_map[data[i]].tolist() for i in range(len(data))]
-    #     gpt_map = self.tokenizer(str_map, padding=True, is_split_into_words=True)
-    #     tok = torch.tensor(gpt_map["input_ids"]).cuda()
-    #     attn_mask = torch.tensor(gpt_map["attention_mask"]).cuda()
-    #     tok_mask = attn_mask.argmax(1)
-
-    #     # Pass through model
-    #     prob, _, _ = self.model(input_ids=tok, attention_mask=attn_mask)
-    #     prob = batched_index_select(prob, 1, tok_mask)
-
-    #     prob = F.softmax(prob, dim=-1).view(
-    #         -1, self.vocab_size
-    #     )
-
-    #     # compute loss & backprop
-    #     loss = self.loss(prob, data[:, -1])
-    #     loss.backward()
-    #     self.optim.step()
-
-    #     # ret loss
-    #     return loss
+         # ret loss
+         return loss
 
     def rl_train_step(self, rewarder, generator_batch_size, roll_num=4):
         """
