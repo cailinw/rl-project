@@ -1,6 +1,6 @@
 import pickle
 from torch.utils.data import Dataset
-
+import torch
 
 class COCOImageCaptionsDataset(Dataset):
 	"""COCO Image Captions dataset."""
@@ -11,7 +11,7 @@ class COCOImageCaptionsDataset(Dataset):
 			pkl_file (string): Path to the file with tokenized sentences.
 		"""
 		self.pkl_file = pkl_file
-		self.truth, self.m_in, self.mask = pickle.load(open(pkl_file, "rb"))  # (num_sentences, m_in)
+                self.truth, self.m_in, self.mask = pickle.load(open(pkl_file, "rb"))  # (num_sentences, m_in)
                 self.truth = torch.tensor(self.truth).cuda()
                 self.m_in = torch.tensor(self.m_in).cuda()
                 self.mask = torch.tensor(self.mask).cuda()
