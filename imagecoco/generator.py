@@ -188,7 +188,7 @@ class Generator:
 
          # Pass through model
          prob, _, _ = self.model(input_ids=m_in)
-         print(tok_mask.bool())
+         prob = torch.tensor(prob).cuda()
          prob = batched_index_select(prob, 1, tok_mask.bool())
 
          prob = F.softmax(prob, dim=-1).view(
