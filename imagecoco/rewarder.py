@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.utils import clip_grad_norm
 
 
 class RewardModel(nn.Module):
@@ -44,6 +45,7 @@ class Rewarder:
         embed_dim,
         mlp_hidden_size,
         learning_rate,
+        clip_max_norm,
     ):
 
         self.seq_length = seq_length
@@ -52,6 +54,7 @@ class Rewarder:
         self.embed_dim = embed_dim  # action embedding
         self.mlp_hidden_size = mlp_hidden_size  # hidden layers of reward model
         self.learning_rate = learning_rate
+        self.clip_max_norm = clip_max_norm
 
         self.model = RewardModel(
             hidden_state_size, mlp_hidden_size, embed_dim, vocab_size
@@ -169,7 +172,7 @@ class Rewarder:
         loss = -(reward_real - reward_gen)
         self.optimizer.zero_grad()
         loss.backward()
-        # utils.clip_grad_norm(self.model.parameters(), 40)
+        clip_grad_norm(self.model.parameters(), self.clip_max_norm)
         self.optimizer.step()
 
         return loss.cpu().data.numpy()

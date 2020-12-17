@@ -5,6 +5,7 @@ from transformers import GPT2LMHeadModel, GPT2Tokenizer, AdamW
 
 from torch.distributions import Categorical
 import torch.nn.functional as F
+from torch.nn.utils import clip_grad_norm
 
 
 def batched_index_select(t, dim, inds):
@@ -12,9 +13,10 @@ def batched_index_select(t, dim, inds):
 
 
 class Generator:
-    def __init__(self, seq_len, str_map):
+    def __init__(self, seq_len, str_map, clip_max_norm):
         self.seq_len = seq_len
         self.vocab_size = len(str_map)
+        self.clip_max_norm = clip_max_norm
 
         # declare our model, wanting to see hidden states
         self.model = GPT2LMHeadModel.from_pretrained(
@@ -280,6 +282,7 @@ class Generator:
         loss = -reward
         self.optim.zero_grad()
         loss.backward()
+        clip_grad_norm(self.model.parameters(), self.clip_max_norm)
         self.optim.step()
 
         return loss.cpu().data.numpy()

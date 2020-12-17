@@ -21,8 +21,8 @@ SEQ_LENGTH = 32
 
 # Model parameters
 g_hidden_state_size = 768
-r_hidden_state_size = 512
-action_embed_dim = 56
+r_hidden_state_size = 256
+action_embed_dim = 32
 
 
 # Generator training step parameters
@@ -36,9 +36,11 @@ generated_batch_size = 64
 # Training parameters
 G_LEARNING_RATE = 5e-5
 R_LEARNING_RATE = 0.01
+G_CLIP_MAX_NORM = 40
+R_CLIP_MAX_NORM = 40
 NUM_ITERS = 51
 G_ITERS = 1
-R_ITERS = 10
+R_ITERS = 5
 PRETRAIN_ITERS = 20
 restore = False
 
@@ -56,7 +58,7 @@ if restore:
     # generator = restore_lates("checkpoints/", "g")
     # rewarder = restore_latest("checkpoints/", "r")
 else:
-    generator = Generator(SEQ_LENGTH, str_map)
+    generator = Generator(SEQ_LENGTH, str_map, G_CLIP_MAX_NORM)
     rewarder = Rewarder(
         SEQ_LENGTH,
         vocab_size,
@@ -64,6 +66,7 @@ else:
         action_embed_dim,
         r_hidden_state_size,
         R_LEARNING_RATE,
+        R_CLIP_MAX_NORM
     )
 
 # Load training data
@@ -129,18 +132,23 @@ for it in range(NUM_ITERS):
 
 
     # Logging
-    if it % 5 == 0 or it == NUM_ITERS - 1:
+    if it % 5 == 0 or it == NUM_ITERS - 1 or it == 1:
+        # Save models
+        torch.save(generator.model.state_dict(), f"/content/gdrive/My Drive/rl-project/checkpoints/generator_{it}_{g_losses[-1]}.pt")
+        torch.save(rewarder.model.state_dict(), f"/content/gdrive/My Drive/rl-project/checkpoints/rewarder_{it}_{r_losses[-1]}.pt")
+
         # Generate samples
         generated_samples = generator.generate(generator_batch_size, 1, None, False, False, True)
-        output_file = "/checkpoints/generated_samples/generator_sample_" + str(it) + ".txt"
-        with open(output_file, 'w') as fout:
-            for sentence in generated_samples:
-                buffer = ' '.join([str(x) for x in poem]) + '\n'
+        output_file = f"/content/gdrive/My Drive/rl-project/checkpoints/generator_sample_{it}.txt"
+        with open(output_file, 'w+') as fout:
+            for sentence in generated_samples[0]:
+                buffer = ' '.join(sentence) + "\n"
                 fout.write(buffer)
 
         # Plot loss
         display.clear_output(wait=True)
+        fig, ax = plt.subplots(1,2,figsize=(14,7))
         ax[0].cla(); ax[0].plot(g_losses)
         ax[1].cla(); ax[1].plot(r_losses)
         display.display(plt.gcf())
-        print(it, g_loss, r_loss)
+        print(it, g_losses, r_losses)
