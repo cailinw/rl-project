@@ -46,6 +46,7 @@ class Rewarder:
         mlp_hidden_size,
         learning_rate,
         clip_max_norm,
+        momentum,
     ):
 
         self.seq_length = seq_length
@@ -55,11 +56,12 @@ class Rewarder:
         self.mlp_hidden_size = mlp_hidden_size  # hidden layers of reward model
         self.learning_rate = learning_rate
         self.clip_max_norm = clip_max_norm
+        self.momentum = momentum
 
         self.model = RewardModel(
             hidden_state_size, mlp_hidden_size, embed_dim, vocab_size
         ).cuda()
-        self.optimizer = torch.optim.Adam(self.model.parameters(), self.learning_rate)
+        self.optimizer = torch.optim.SGD(self.model.parameters(), self.learning_rate, self.momentum)
 
     def restore_model(self, checkpoint_file):
         checkpoint = torch.load(checkpoint_file)

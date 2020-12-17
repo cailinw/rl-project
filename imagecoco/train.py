@@ -38,6 +38,7 @@ G_LEARNING_RATE = 5e-5
 R_LEARNING_RATE = 0.01
 G_CLIP_MAX_NORM = 40
 R_CLIP_MAX_NORM = 40
+R_MOMENTUM = 0.9
 NUM_ITERS = 51
 G_ITERS = 1
 R_ITERS = 5
@@ -66,7 +67,8 @@ else:
         action_embed_dim,
         r_hidden_state_size,
         R_LEARNING_RATE,
-        R_CLIP_MAX_NORM
+        R_CLIP_MAX_NORM,
+        R_MOMENTUM
     )
 
 # Load training data
