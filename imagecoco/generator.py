@@ -187,7 +187,7 @@ class Generator:
          data, m_in, tok_mask = batch
 
          # Pass through model
-         prob, _, _ = self.model(input_ids=m_in)
+         prob = self.model(input_ids=m_in)[0]
          prob = torch.tensor(prob).cuda()
          prob = batched_index_select(prob, 1, tok_mask.bool())
 
