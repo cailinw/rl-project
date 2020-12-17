@@ -6,9 +6,8 @@ class COCOImageCaptionsDataset(Dataset):
     """COCO Image Captions dataset."""
 
     def __init__(self, pkl_file):
-	"""
-	Parameters:
-	    pkl_file (string): Path to the file with tokenized sentences.
+        """
+	Parameters: pkl_file (string): Path to the file with tokenized sentences.
 	"""
         self.pkl_file = pkl_file
         self.truth, self.m_in, self.mask = pickle.load(open(pkl_file, "rb"))  # (num_sentences, m_in)
