@@ -53,11 +53,6 @@ restore = False
 str_map = pickle.load(open("save/str_map.pkl", "rb"))
 
 # Load models
-if restore:
-    pass
-    # TODO: Implement this...inside Generator and Rewarder classes
-    # generator = restore_lates("checkpoints/", "g")
-    # rewarder = restore_latest("checkpoints/", "r")
 else:
     generator = Generator(SEQ_LENGTH, str_map, G_CLIP_MAX_NORM)
     rewarder = Rewarder(
@@ -70,6 +65,11 @@ else:
         R_CLIP_MAX_NORM,
         R_MOMENTUM
     )
+if restore:
+    # Replace this with the path to the model you want to restore
+    generator.restore_model("/content/gdrive/My Drive/rl-project/checkpoints/generator_30_-2297416384512.0.pt")
+    rewarder.restore_model("/content/gdrive/My Drive/rl-project/checkpoints/rewarder_30_-33264479027.2.pt")
+
 
 # Load training data
 train_data = COCOImageCaptionsDataset("save/train_data.pkl")
