@@ -5,7 +5,7 @@ from transformers import GPT2LMHeadModel, GPT2Tokenizer, AdamW
 
 from torch.distributions import Categorical
 import torch.nn.functional as F
-from torch.nn.utils import clip_grad_norm
+from torch.nn.utils import clip_grad_norm_
 
 
 def batched_index_select(t, dim, inds):
@@ -282,7 +282,7 @@ class Generator:
         loss = -reward
         self.optim.zero_grad()
         loss.backward()
-        clip_grad_norm(self.model.parameters(), self.clip_max_norm)
+        clip_grad_norm_(self.model.parameters(), self.clip_max_norm)
         self.optim.step()
 
         return loss.cpu().data.numpy()

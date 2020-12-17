@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.utils import clip_grad_norm
+from torch.nn.utils import clip_grad_norm_
 
 
 class RewardModel(nn.Module):
@@ -66,7 +66,7 @@ class Rewarder:
     def restore_model(self, checkpoint_file):
         checkpoint = torch.load(checkpoint_file)
         self.model.load_state_dict(checkpoint)
-        self.optimizer = torch.optim.Adam(self.model.parameters(), self.learning_rate)
+        self.optimizer = torch.optim.SGD(self.model.parameters(), self.learning_rate, self.momentum)
 
     def compute_rewards_to_go(
         self, trajectories, generator, roll_num=4, reward_gamma=1.0
@@ -174,7 +174,7 @@ class Rewarder:
         loss = -(reward_real - reward_gen)
         self.optimizer.zero_grad()
         loss.backward()
-        clip_grad_norm(self.model.parameters(), self.clip_max_norm)
+        clip_grad_norm_(self.model.parameters(), self.clip_max_norm)
         self.optimizer.step()
 
         return loss.cpu().data.numpy()
