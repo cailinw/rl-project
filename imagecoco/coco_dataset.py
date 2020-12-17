@@ -10,9 +10,9 @@ class COCOImageCaptionsDataset(Dataset):
 	"""
         self.pkl_file = pkl_file
         self.truth, self.m_in, self.mask = pickle.load(open(pkl_file, "rb"))  # (num_sentences, m_in)
-        self.truth = torch.tensor(self.truth).cuda()
-        self.m_in = torch.tensor(self.m_in).cuda()
-        self.mask = torch.tensor(self.mask).cuda()
+        self.truth = self.truth.cuda()
+        self.m_in = self.m_in.cuda()
+        self.mask = self.mask.cuda()
 
     def __len__(self):
         return len(self.truth)
