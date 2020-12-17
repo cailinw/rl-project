@@ -10,7 +10,7 @@ class COCOImageCaptionsDataset(Dataset):
 		Parameters:
 			pkl_file (string): Path to the file with tokenized sentences.
 		"""
-		self.pkl_file = pkl_file
+                self.pkl_file = pkl_file
                 self.truth, self.m_in, self.mask = pickle.load(open(pkl_file, "rb"))  # (num_sentences, m_in)
                 self.truth = torch.tensor(self.truth).cuda()
                 self.m_in = torch.tensor(self.m_in).cuda()
