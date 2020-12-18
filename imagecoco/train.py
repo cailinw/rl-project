@@ -80,6 +80,7 @@ pretrain_losses = []
 for it in range(PRETRAIN_ITERS):
     batch_data = next(iter(train_dataloader))
     loss = generator.pretrain_step(batch_data).data.cpu().numpy()
+    print(loss)
     pretrain_losses.append(loss)
 
 
