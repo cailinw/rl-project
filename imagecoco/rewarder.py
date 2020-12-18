@@ -61,12 +61,19 @@ class Rewarder:
         self.model = RewardModel(
             hidden_state_size, mlp_hidden_size, embed_dim, vocab_size
         ).cuda()
-        self.optimizer = torch.optim.SGD(self.model.parameters(), self.learning_rate, self.momentum)
+        self.optimizer = torch.optim.SGD(
+            self.model.parameters(),
+            self.learning_rate,
+            self.momentum,
+            weight_decay=1e-5,
+        )
 
     def restore_model(self, checkpoint_file):
         checkpoint = torch.load(checkpoint_file)
         self.model.load_state_dict(checkpoint)
-        self.optimizer = torch.optim.SGD(self.model.parameters(), self.learning_rate, self.momentum)
+        self.optimizer = torch.optim.SGD(
+            self.model.parameters(), self.learning_rate, self.momentum
+        )
 
     def compute_rewards_to_go(
         self, trajectories, generator, roll_num=4, reward_gamma=1.0
