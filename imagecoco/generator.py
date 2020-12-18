@@ -9,8 +9,16 @@ from torch.nn.utils import clip_grad_norm_
 
 
 def batched_index_select(t, dim, inds):
-    return torch.tensor([t[i][inds[i]].cpu().tolist() for i in range(len(inds))]).cuda()
+    res = []
 
+    if len(inds.shape) == 2:
+        for i in range(len(inds)):
+            res.extend(t[i][inds[i]].cpu().tolist())
+    elif len(inds.shape) == 1:
+        for i in range(len(inds)):
+            res.append(t[i][inds[i]].cpu().tolist())
+
+    return torch.tensor(res).cuda()
 
 class Generator:
     def __init__(self, seq_len, str_map, clip_max_norm):
@@ -188,8 +196,6 @@ class Generator:
 
          # Pass through model
          prob = self.model(input_ids=m_in)[0]
-         print(prob.shape)
-         print(tok_mask.shape)
          prob = batched_index_select(prob, 1, tok_mask.bool())
 
          prob = F.softmax(prob, dim=-1).view(
