@@ -165,9 +165,9 @@ class Generator:
             # turn into gpt2 vocab
             # str_map = [self.str_map[data[i]].tolist() for i in range(len(data))]
             if t == 0:
-                str_map = [[self.str_map[data[i]].tolist()] for i in range(len(data))]
+                str_map = [[self.str_map[data[i].cpu()].tolist()] for i in range(len(data))]
             else:
-                str_map = [self.str_map[data[i]].tolist() for i in range(len(data))]
+                str_map = [self.str_map[data[i].cpu()].tolist() for i in range(len(data))]
             gpt_map = self.tokenizer(str_map, padding=True, is_split_into_words=True)
             tok = torch.tensor(gpt_map["input_ids"]).cuda()
             attn_mask = torch.tensor(gpt_map["attention_mask"]).cuda()
