@@ -7,7 +7,6 @@ from torch.distributions import Categorical
 import torch.nn.functional as F
 from torch.nn.utils import clip_grad_norm_
 
-
 def batched_index_select(t, dim, inds):
     res = []
 
@@ -32,9 +31,12 @@ class Generator:
         ).cuda()
 
         # freeze transformer
-        for i in range(self.model.config.n_layer - num_decoder_train):
-            for param in self.model.transformer.h[i].parameters():
-                param.requires_grad = False
+#        for i in range(self.model.config.n_layer - num_decoder_train):
+#            for param in self.model.transformer.h[i].parameters():
+#                param.requires_grad = False
+
+	for param in self.model.transformer.parameters():
+		param.requires_grad = False
 
         # mod head for our coco vocab
         self.model.lm_head = nn.Linear(
