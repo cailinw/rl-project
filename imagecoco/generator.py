@@ -13,12 +13,12 @@ def batched_index_select(t, dim, inds):
 
     if len(inds.shape) == 2:
         for i in range(len(inds)):
-            res.extend(t[i][inds[i]].cpu().tolist())
+            res.extend(t[i][inds[i]].cpu())
     elif len(inds.shape) == 1:
         for i in range(len(inds)):
-            res.append(t[i][inds[i]].cpu().tolist())
+            res.append(t[i][inds[i]].cpu())
 
-    return torch.tensor(res).cuda()
+    return torch.stack(res).cuda()
 
 class Generator:
     def __init__(self, seq_len, str_map, clip_max_norm):
