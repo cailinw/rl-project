@@ -21,7 +21,7 @@ def batched_index_select(t, dim, inds):
     return torch.stack(res).cuda()
 
 class Generator:
-    def __init__(self, seq_len, str_map, clip_max_norm):
+    def __init__(self, seq_len, str_map, clip_max_norm, num_decoder_train=2):
         self.seq_len = seq_len
         self.vocab_size = len(str_map)
         self.clip_max_norm = clip_max_norm
@@ -32,8 +32,9 @@ class Generator:
         ).cuda()
 
         # freeze transformer
-        for param in self.model.transformer.parameters():
-            param.requires_grad = False
+        for i in range(self.model.config.n_layer - num_decoder_train):
+            for param in self.model.transformer.h[i].parameters():
+                param.requires_grad = False
 
         # mod head for our coco vocab
         self.model.lm_head = nn.Linear(
