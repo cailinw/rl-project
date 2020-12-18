@@ -33,7 +33,7 @@ class Generator:
 
         # freeze transformer
         for i in range(self.model.config.n_layer - num_decoder_train):
-            for param in self.model.transformer.h[i]:
+            for param in self.model.transformer.h[i].parameters():
                 param.requires_grad = False
 
         # mod head for our coco vocab
