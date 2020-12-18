@@ -35,8 +35,8 @@ class Generator:
 #            for param in self.model.transformer.h[i].parameters():
 #                param.requires_grad = False
 
-	for param in self.model.transformer.parameters():
-		param.requires_grad = False
+        for param in self.model.transformer.parameters():
+             param.requires_grad = False
 
         # mod head for our coco vocab
         self.model.lm_head = nn.Linear(
