@@ -47,6 +47,7 @@ class Rewarder:
         learning_rate,
         clip_max_norm,
         momentum,
+        baseline=False,
     ):
 
         self.seq_length = seq_length
@@ -57,6 +58,7 @@ class Rewarder:
         self.learning_rate = learning_rate
         self.clip_max_norm = clip_max_norm
         self.momentum = momentum
+        self.baseline = baseline
 
         self.model = RewardModel(
             hidden_state_size, mlp_hidden_size, embed_dim, vocab_size
@@ -90,6 +92,7 @@ class Rewarder:
 
         init_shape = trajectories.shape
         trajectories = trajectories.reshape((-1, self.seq_length))
+        trajectories_real = generator.get_hidden_state(trajectories)
         batch_size = init_shape[0]
 
         rewards_to_go = torch.zeros(batch_size, self.seq_length).cuda()
@@ -100,6 +103,7 @@ class Rewarder:
 
             current_traj = trajectories[:, 0 : (t + 1)]
             # current_traj.shape = (batch_size, starting_seq_len))
+            expected_reward = 0
             for k in range(roll_num):
                 rollouts, rollout_hidden_states = generator.generate(
                     batch_size,
@@ -119,9 +123,24 @@ class Rewarder:
                 )
                 result = rewards.view(batch_size, self.seq_length).sum(axis=1)
 
-                rewards_to_go[:, t] += result
+                expected_reward += result
 
-            rewards_to_go[:, t] /= roll_num
+            expected_reward /= roll_num
+
+            # Compute the reward actually incurred by the trajectory.
+            # (batch_size, remaining_seq_len)
+            if self.baseline:
+                remaining_trajectory = trajectories[:, t:]
+                remaining_trajectory_hidden = trajectories_real[:, t:]
+                realized_reward = self.model(
+                    remaining_trajectory_hidden.view(-1, self.hidden_state_size),
+                    remaining_trajectory.view(-1),
+                )
+                realized_reward = rewards.view(batch_size, self.seq_length).sum(axis=1)
+
+                rewards_to_go[:, t] = realized_reward - expected_reward
+            else:
+                rewards_to_go[:, t] = expected_reward
 
         return rewards_to_go
 
